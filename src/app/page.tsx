@@ -61,7 +61,7 @@ export default async function DashboardPage() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px] pointer-events-none"></div>
       
       <nav className="bg-white/70 backdrop-blur-xl border-b border-white/40 px-6 py-4 sticky top-0 z-40 shadow-sm">
-        <div className="flex justify-between items-center max-w-7xl mx-auto">
+        <div className="flex justify-between items-center w-full max-w-[98%] mx-auto">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-inner">A</div>
             <div>
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-8 relative z-10">
+      <main className="w-full max-w-[98%] mx-auto p-4 sm:p-6 md:p-8 relative z-10">
         
         {/* Greetings & Actions */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-4">
