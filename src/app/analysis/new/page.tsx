@@ -110,11 +110,15 @@ export default function NewAnalysisPage() {
       }
 
       // 2. Simpan Metadata ke Supabase (Database Utama)
+      // Ambil school_name dari profil pengguna terlebih dahulu
+      const { data: profile } = await supabase.from('user_profiles').select('school_name').eq('id', user.id).single()
+
       const { data: insertedSession, error } = await supabase.from('analysis_sessions').insert({
         user_id: user.id,
         name: file?.name || 'Analisis Baru',
         exam_type: examType,
         kkm: kkm,
+        school_name: profile?.school_name || 'Tidak Diketahui',
         data_payload: hybridPayload // Hanya menyimpan metadata
       }).select('id').single()
 
