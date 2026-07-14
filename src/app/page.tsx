@@ -25,7 +25,7 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-inner">A</div>
             <div>
-              <div className="text-xl font-bold tracking-tight text-slate-900 leading-none">Anabus<span className="text-blue-600">Pro</span></div>
+              <div className="text-xl font-bold tracking-tight text-slate-900 leading-none">Anasol<span className="text-blue-600">App</span></div>
               <div className="text-[11px] text-slate-500 font-medium tracking-wide">SAAS EDITION</div>
             </div>
           </div>
@@ -77,3 +77,4 @@ export default async function DashboardPage() {
     </div>
   )
 }
+

@@ -76,7 +76,7 @@ export default function LoginPage() {
   const nipToEmail = (nip: string) => {
     const trimmed = nip.trim()
     if (trimmed.includes('@')) return trimmed
-    return `nip.${trimmed}@anabus.internal`
+    return `nip.${trimmed}@anasol.internal`
   }
 
   const handleLogin = async () => {
@@ -187,7 +187,7 @@ export default function LoginPage() {
         </div>
         <div>
           <div className="text-3xl font-black text-slate-900 tracking-tight leading-none">
-            Anabus<span className="text-blue-600">Pro</span>
+            Anasol<span className="text-blue-600">App</span>
           </div>
           <div className="text-xs text-slate-500 font-bold tracking-widest uppercase mt-0.5">Sistem Analisis Butir Soal</div>
         </div>
@@ -362,7 +362,7 @@ export default function LoginPage() {
                 onChange={(e) => setLicenseCode(e.target.value)}
                 className="w-full bg-white border border-amber-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 shadow-sm transition-all"
               />
-              <p className="text-amber-700/80 text-xs mt-2 font-medium">Kode ini hanya diberikan oleh Administrator AnabusPro.</p>
+              <p className="text-amber-700/80 text-xs mt-2 font-medium">Kode ini hanya diberikan oleh Administrator AnasolApp.</p>
             </div>
           )}
 
@@ -416,7 +416,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <p className="text-slate-400 text-xs mt-8 font-medium">© 2025 AnabusPro · Sistem Analisis Butir Soal</p>
+      <p className="text-slate-400 text-xs mt-8 font-medium">© 2025 AnasolApp · Sistem Analisis Butir Soal</p>
     </div>
   )
 }
+

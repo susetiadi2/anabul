@@ -174,7 +174,7 @@ export default function SuperadminDashboard() {
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-black text-lg leading-none text-slate-800">AnabusPro <span className="text-rose-500">Superadmin</span></div>
+              <div className="font-black text-lg leading-none text-slate-800">AnasolApp <span className="text-rose-500">Superadmin</span></div>
               <div className="text-xs text-slate-500 font-medium">Panel Kontrol Sistem</div>
             </div>
           </div>
@@ -459,3 +459,4 @@ export default function SuperadminDashboard() {
     </div>
   )
 }
+
