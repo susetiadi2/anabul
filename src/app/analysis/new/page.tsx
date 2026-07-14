@@ -290,7 +290,7 @@ export default function NewAnalysisPage() {
                           <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-rose-50 transition-colors">
                             <div className="flex items-center gap-3">
                               <span className="text-xs text-slate-400 w-5 text-right">{i + 1}.</span>
-                              <span className="text-sm font-medium text-slate-800">{s.id}</span>
+                              <span className="text-sm font-medium text-slate-800">{s.name}</span>
                             </div>
                             <span className="text-sm font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-lg">
                               {s.finalScore.toFixed(1)}
@@ -328,7 +328,7 @@ export default function NewAnalysisPage() {
                           <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-emerald-50 transition-colors">
                             <div className="flex items-center gap-3">
                               <span className="text-xs text-slate-400 w-5 text-right">{i + 1}.</span>
-                              <span className="text-sm font-medium text-slate-800">{s.id}</span>
+                              <span className="text-sm font-medium text-slate-800">{s.name}</span>
                             </div>
                             <span className="text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
                               {s.finalScore.toFixed(1)}
