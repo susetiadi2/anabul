@@ -19,7 +19,7 @@ export default function NewAnalysisPage() {
   const [activeTab, setActiveTab] = useState('ringkasan')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
-  const [identity, setIdentity] = useState({ mataPelajaran: '', kelas: '', guru: '', nip: '', sekolah: '' })
+  const [identity, setIdentity] = useState({ mataPelajaran: '', kelas: '', jenisAsesmen: 'Asesmen Formatif (UH)', guru: '', nip: '', sekolah: '' })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -149,7 +149,18 @@ export default function NewAnalysisPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
             <div className="mb-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
               <h3 className="font-bold text-slate-800 mb-4">Identitas Laporan (Untuk Cetak)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Jenis Asesmen</label>
+                  <select value={identity.jenisAsesmen} onChange={e => setIdentity({...identity, jenisAsesmen: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                    <option value="Asesmen Formatif (UH)">Asesmen Formatif (UH)</option>
+                    <option value="Asesmen Sumatif Tengah Semester">Sumatif Tengah Semester</option>
+                    <option value="Asesmen Sumatif Akhir Semester">Sumatif Akhir Semester</option>
+                    <option value="Ujian Sekolah / Madrasah">Ujian Sekolah / Madrasah</option>
+                    <option value="Try Out">Try Out</option>
+                    <option value="Latihan Soal">Latihan Soal</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Mata Pelajaran</label>
                   <input type="text" value={identity.mataPelajaran} onChange={e => setIdentity({...identity, mataPelajaran: e.target.value})} placeholder="Contoh: Matematika" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
@@ -199,10 +210,11 @@ export default function NewAnalysisPage() {
               <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide">Laporan Analisis Butir Soal</h2>
               <h3 className="text-lg font-bold text-slate-700 uppercase mb-4">{identity.sekolah}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-800 border-t border-slate-200 pt-4 print:border-black">
-                <div className="flex"><span className="w-32 font-semibold">Mata Pelajaran</span><span className="mr-2">:</span>{identity.mataPelajaran || '-'}</div>
-                <div className="flex"><span className="w-32 font-semibold">Nama Guru</span><span className="mr-2">:</span>{identity.guru || '-'}</div>
-                <div className="flex"><span className="w-32 font-semibold">Kelas/Semester</span><span className="mr-2">:</span>{identity.kelas || '-'}</div>
-                <div className="flex"><span className="w-32 font-semibold">NIP</span><span className="mr-2">:</span>{identity.nip || '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold">Jenis Asesmen</span><span className="mr-2">:</span>{identity.jenisAsesmen || '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold">Nama Guru</span><span className="mr-2">:</span>{identity.guru || '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold">Mata Pelajaran</span><span className="mr-2">:</span>{identity.mataPelajaran || '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold">NIP</span><span className="mr-2">:</span>{identity.nip || '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold">Kelas/Semester</span><span className="mr-2">:</span>{identity.kelas || '-'}</div>
               </div>
             </div>
 
