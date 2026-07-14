@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { FolderPlus, FileSpreadsheet, LogOut, ChartBar } from 'lucide-react'
 import TrendChart from '@/components/TrendChart'
+import SmartRecommendations from '@/components/SmartRecommendations'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -129,6 +130,11 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* AI Smart Recommendations */}
+        {sessions && sessions.length > 0 && (
+          <SmartRecommendations sessions={sessions} />
+        )}
 
         {/* Grafik Tren Belajar */}
         {sessions && sessions.length > 1 && (
