@@ -132,7 +132,7 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
                 outerRadius={85}
                 paddingAngle={4}
                 dataKey="value"
-                label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${((percent || 0) * 100).toFixed(0)}%`}
                 labelLine={false}
               >
                 {ketuntasanData.map((_, i) => (
