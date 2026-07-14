@@ -140,7 +140,7 @@ export default function NewAnalysisPage() {
             </div>
 
             <div className="mb-6">
-              <label className="block font-bold text-slate-800 mb-2">2. Target KKM</label>
+              <label className="block font-bold text-slate-800 mb-2">2. Nilai KKTP</label>
               <input type="number" value={kkm} onChange={e => setKkm(Number(e.target.value))} className="w-32 px-4 py-2 border border-slate-300 rounded-lg" />
             </div>
 
@@ -285,7 +285,7 @@ export default function NewAnalysisPage() {
                 <div className="space-y-4">
                   {/* Header info */}
                   <div className="flex items-center justify-between text-sm text-slate-500 mb-2">
-                    <span>KKM: <span className="font-bold text-slate-700">{kkm}</span></span>
+                    <span>KKTP: <span className="font-bold text-slate-700">{kkm}</span></span>
                     <span>Total {analysisResult.studentData.length} siswa</span>
                   </div>
 

@@ -121,7 +121,7 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
     <div className="space-y-4">
       {/* ─── Row 1: Ketuntasan + Kualitas Soal ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Ketuntasan Belajar" subtitle={`KKM ${kkm} — Total ${total} siswa`}>
+        <ChartCard title="Ketuntasan Belajar" subtitle={`KKTP ${kkm} — Total ${total} siswa`}>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
