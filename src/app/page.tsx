@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { FolderPlus, FileSpreadsheet, LogOut, ChartBar } from 'lucide-react'
+import TrendChart from '@/components/TrendChart'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -128,6 +129,11 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Grafik Tren Belajar */}
+        {sessions && sessions.length > 1 && (
+          <TrendChart sessions={sessions} />
+        )}
 
         {(!sessions || sessions.length === 0) ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
