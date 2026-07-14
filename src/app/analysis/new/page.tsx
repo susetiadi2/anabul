@@ -253,6 +253,9 @@ export default function NewAnalysisPage() {
               <button onClick={() => setActiveTab('ringkasan')} className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'ringkasan' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
                 Ringkasan & Statistik
               </button>
+              <button onClick={() => setActiveTab('sebaran')} className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'sebaran' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
+                Sebaran Nilai
+              </button>
               <button onClick={() => setActiveTab('butir')} className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'butir' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
                 Analisis Butir Soal
               </button>
@@ -280,6 +283,75 @@ export default function NewAnalysisPage() {
                 <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl">
                   <h3 className="font-bold mb-2">Kesimpulan Umum</h3>
                   <p className="text-sm leading-relaxed">{analysisResult.summary.narrative}</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'sebaran' && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <h3 className="font-bold mb-4">Sebaran Jawaban & Nilai Siswa</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-center border-collapse">
+                    <thead className="text-xs text-slate-700 bg-slate-50 border-b border-t">
+                      <tr>
+                        <th className="px-4 py-3 border-x text-left" rowSpan={2}>No</th>
+                        <th className="px-4 py-3 border-x text-left min-w-[200px]" rowSpan={2}>Nama Siswa</th>
+                        <th className="px-4 py-2 border-x border-b" colSpan={analysisResult.analyzedData.length}>Nomor Soal</th>
+                        <th className="px-4 py-3 border-x" rowSpan={2}>Skor Total</th>
+                        <th className="px-4 py-3 border-x" rowSpan={2}>Nilai Akhir</th>
+                      </tr>
+                      <tr>
+                        {analysisResult.analyzedData.map((q: any) => (
+                          <th key={q.id} className="px-2 py-2 border-x min-w-[40px] font-bold">{q.id}</th>
+                        ))}
+                      </tr>
+                      {/* Baris Kunci Jawaban / Max Skor */}
+                      <tr className="bg-blue-50/50 border-b border-blue-200">
+                        <td colSpan={2} className="px-4 py-2 font-bold text-right border-x text-blue-800">
+                          {examType === 'uraian' ? 'Skor Maksimal' : 'Kunci Jawaban'}
+                        </td>
+                        {analysisResult.analyzedData.map((q: any) => (
+                          <td key={q.id} className="px-2 py-2 border-x font-bold text-blue-700">
+                            {examType === 'uraian' ? q.maxScore : (q.keyAns || '-')}
+                          </td>
+                        ))}
+                        <td className="px-4 py-2 border-x font-bold text-blue-800">-</td>
+                        <td className="px-4 py-2 border-x font-bold text-blue-800">100</td>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysisResult.studentData.map((s: any, idx: number) => (
+                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2 border-x text-left text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-2 border-x text-left font-semibold text-slate-700">{s.name}</td>
+                          {analysisResult.analyzedData.map((q: any) => {
+                            let ansVal = s.itemScores[`${q.id}_ans`]
+                            let isCorrect = false
+                            
+                            if (examType === 'uraian') {
+                              ansVal = s.itemScores[q.id]
+                              isCorrect = ansVal === q.maxScore
+                            } else {
+                              const keys = (q.keyAns || "").split(',').map((k: string) => k.trim())
+                              isCorrect = keys.includes(ansVal)
+                            }
+                            
+                            const cellColor = examType === 'uraian' 
+                              ? (isCorrect ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-slate-600')
+                              : (isCorrect ? 'text-emerald-700 font-bold bg-emerald-50' : 'text-rose-600 font-medium bg-rose-50/50')
+                              
+                            return (
+                              <td key={q.id} className={`px-2 py-2 border-x ${cellColor}`}>
+                                {ansVal !== undefined && ansVal !== "" ? ansVal : '-'}
+                              </td>
+                            )
+                          })}
+                          <td className="px-4 py-2 border-x font-bold text-slate-700">{s.rawScore}</td>
+                          <td className="px-4 py-2 border-x font-bold text-blue-700">{s.finalScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
