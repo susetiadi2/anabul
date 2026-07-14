@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -19,10 +19,29 @@ export default function NewAnalysisPage() {
   const [activeTab, setActiveTab] = useState('ringkasan')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [identity, setIdentity] = useState({ mataPelajaran: '', kelas: '', guru: '', nip: '', sekolah: '' })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const router = useRouter()
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single()
+        if (profile) {
+          setIdentity(prev => ({
+            ...prev,
+            guru: profile.name || '',
+            nip: profile.nip || '',
+            sekolah: profile.school_name || ''
+          }))
+        }
+      }
+    }
+    fetchProfile()
+  }, [])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -128,6 +147,21 @@ export default function NewAnalysisPage() {
 
         {!analysisResult ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <div className="mb-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+              <h3 className="font-bold text-slate-800 mb-4">Identitas Laporan (Untuk Cetak)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Mata Pelajaran</label>
+                  <input type="text" value={identity.mataPelajaran} onChange={e => setIdentity({...identity, mataPelajaran: e.target.value})} placeholder="Contoh: Matematika" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kelas / Semester</label>
+                  <input type="text" value={identity.kelas} onChange={e => setIdentity({...identity, kelas: e.target.value})} placeholder="Contoh: IX / Ganjil" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-3 font-medium">*Nama Guru dan Sekolah akan otomatis diambil dari profil Anda saat dicetak.</p>
+            </div>
+
             <div className="mb-6">
                 <label className="block font-bold text-slate-800 mb-2">1. Pilih Jenis Instrumen</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -160,6 +194,18 @@ export default function NewAnalysisPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Kop Surat (Tampil di Print dan Layar) */}
+            <div className="bg-white border-b-4 border-slate-800 p-6 rounded-t-2xl md:p-8 text-center sm:text-left print:border-b-4 print:border-black print:rounded-none print:shadow-none print:p-0 print:mb-8 print:block">
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide">Laporan Analisis Butir Soal</h2>
+              <h3 className="text-lg font-bold text-slate-700 uppercase mb-4">{identity.sekolah}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-800 border-t border-slate-200 pt-4 print:border-black">
+                <div className="flex"><span className="w-32 font-semibold">Mata Pelajaran</span><span className="mr-2">:</span>{identity.mataPelajaran || '-'}</div>
+                <div className="flex"><span className="w-32 font-semibold">Nama Guru</span><span className="mr-2">:</span>{identity.guru || '-'}</div>
+                <div className="flex"><span className="w-32 font-semibold">Kelas/Semester</span><span className="mr-2">:</span>{identity.kelas || '-'}</div>
+                <div className="flex"><span className="w-32 font-semibold">NIP</span><span className="mr-2">:</span>{identity.nip || '-'}</div>
+              </div>
+            </div>
+
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl flex justify-between items-center print:hidden">
               <div>
                 <h3 className="font-bold text-lg">Analisis Selesai!</h3>
