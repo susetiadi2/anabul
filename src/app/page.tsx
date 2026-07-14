@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { FolderPlus, FileSpreadsheet, LogOut, ChartBar } from 'lucide-react'
 import TrendChart from '@/components/TrendChart'
 import SmartRecommendations from '@/components/SmartRecommendations'
+import HistoryTable from '@/components/HistoryTable'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -141,7 +142,10 @@ export default async function DashboardPage() {
           <TrendChart sessions={sessions} />
         )}
 
-        {(!sessions || sessions.length === 0) ? (
+        {/* Tabel Riwayat */}
+        {sessions && sessions.length > 0 ? (
+          <HistoryTable sessions={sessions} />
+        ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
             <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
               <ChartBar className="w-10 h-10" />
@@ -154,10 +158,6 @@ export default async function DashboardPage() {
             >
               Mulai Analisis Pertama
             </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* List of sessions will go here */}
           </div>
         )}
       </main>
