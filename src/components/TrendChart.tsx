@@ -8,7 +8,7 @@ export default function TrendChart({ sessions }: { sessions: any[] }) {
   // Transform data (reverse to show chronological order)
   const data = [...sessions].reverse().map(session => {
     const payload = session.data_payload
-    const siswaCount = payload?.studentData?.length || 1
+    const siswaCount = payload?.metadata?.totalSiswa ?? payload?.studentData?.length ?? 1
     const tuntas = payload?.summary?.tuntas || 0
     const avgKetuntasan = Math.round((tuntas / siswaCount) * 100)
     

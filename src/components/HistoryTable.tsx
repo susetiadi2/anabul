@@ -36,7 +36,7 @@ export default function HistoryTable({ sessions }: { sessions: any[] }) {
             {sessions.map((session) => {
               const data = session.data_payload
               const date = new Date(session.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-              const siswaCount = data?.studentData?.length || 0
+              const siswaCount = data?.metadata?.totalSiswa ?? data?.studentData?.length ?? 0
               const tuntas = data?.summary?.tuntas || 0
               const percentage = siswaCount > 0 ? Math.round((tuntas / siswaCount) * 100) : 0
               

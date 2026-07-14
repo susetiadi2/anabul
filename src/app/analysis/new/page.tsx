@@ -8,6 +8,7 @@ import { analyzeData } from '@/lib/analyzer'
 import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X, Printer } from 'lucide-react'
 import Link from 'next/link'
 import ChartsDashboard from '@/components/ChartsDashboard'
+import { set as idbSet } from 'idb-keyval'
 
 export default function NewAnalysisPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -96,23 +97,40 @@ export default function NewAnalysisPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Anda harus login terlebih dahulu")
 
-      // Ini membutuhkan tabel 'analysis_sessions' di Supabase
-      const { error } = await supabase.from('analysis_sessions').insert({
+      // 1. Ekstrak hanya metrik dan kesimpulan untuk Supabase (Sangat Ringan)
+      const hybridPayload = {
+        summary: analysisResult.summary,
+        metadata: {
+          totalSiswa: analysisResult.studentData?.length || 0,
+          totalSoal: analysisResult.analyzedData?.length || 0,
+          soalValid: analysisResult.analyzedData?.filter((d: any) => d.valStatus === 'Valid').length || 0,
+          soalSukar: analysisResult.analyzedData?.filter((d: any) => d.pCat === 'Sukar').length || 0,
+          soalRevisi: analysisResult.analyzedData?.filter((d: any) => ['Revisi', 'Dibuang', 'Gugur'].includes(d.decision)).length || 0
+        }
+      }
+
+      // 2. Simpan Metadata ke Supabase (Database Utama)
+      const { data: insertedSession, error } = await supabase.from('analysis_sessions').insert({
         user_id: user.id,
         name: file?.name || 'Analisis Baru',
         exam_type: examType,
         kkm: kkm,
-        data_payload: analysisResult // Menyimpan JSON utuh ke database
-      })
+        data_payload: hybridPayload // Hanya menyimpan metadata
+      }).select('id').single()
 
       if (error) throw error
+      
+      // 3. Simpan Data Penuh (Ribuan baris) ke IndexedDB (Lokal Laptop Guru)
+      if (insertedSession?.id) {
+        await idbSet(`analysis_${insertedSession.id}`, analysisResult)
+      }
       
       setShowSuccessModal(true)
       setTimeout(() => {
         router.push('/')
       }, 2500)
     } catch (err: any) {
-      alert("Gagal menyimpan: " + err.message + "\n\nPastikan Anda telah membuat tabel 'analysis_sessions' di Supabase.")
+      alert("Gagal menyimpan: " + err.message + "\n\nPastikan koneksi internet Anda stabil.")
     }
   }
 

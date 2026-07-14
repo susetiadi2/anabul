@@ -31,14 +31,14 @@ export default async function DashboardPage() {
   sessions?.forEach((session: any) => {
     const data = session.data_payload
     if (data) {
-      const siswaCount = data.studentData?.length || 0
+      const siswaCount = data.metadata?.totalSiswa ?? data.studentData?.length ?? 0
       totalSiswa += siswaCount
       totalTuntas += data.summary?.tuntas || 0
       
-      const soalCount = data.analyzedData?.length || 0
+      const soalCount = data.metadata?.totalSoal ?? data.analyzedData?.length ?? 0
       totalSoal += soalCount
       
-      const validCount = data.analyzedData?.filter((d: any) => d.valStatus === 'Valid').length || 0
+      const validCount = data.metadata?.soalValid ?? data.analyzedData?.filter((d: any) => d.valStatus === 'Valid').length ?? 0
       totalValid += validCount
     }
   })

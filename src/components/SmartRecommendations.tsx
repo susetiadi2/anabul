@@ -17,8 +17,11 @@ export default function SmartRecommendations({ sessions }: { sessions: any[] }) 
 
   // Insight 1: Bandingkan ketuntasan
   if (latestData && prevData) {
-    const latestTuntas = (latestData.summary?.tuntas / (latestData.studentData?.length || 1)) * 100
-    const prevTuntas = (prevData.summary?.tuntas / (prevData.studentData?.length || 1)) * 100
+    const latestSiswaCount = latestData.metadata?.totalSiswa ?? latestData.studentData?.length ?? 1
+    const prevSiswaCount = prevData.metadata?.totalSiswa ?? prevData.studentData?.length ?? 1
+    
+    const latestTuntas = (latestData.summary?.tuntas / latestSiswaCount) * 100
+    const prevTuntas = (prevData.summary?.tuntas / prevSiswaCount) * 100
     
     if (latestTuntas < prevTuntas - 10) {
       insights.push({
@@ -40,9 +43,9 @@ export default function SmartRecommendations({ sessions }: { sessions: any[] }) 
   }
 
   // Insight 2: Analisis Butir Soal Terakhir (Kualitas & Keputusan)
-  if (latestData && latestData.analyzedData) {
-    const sukarCount = latestData.analyzedData.filter((d: any) => d.pCat === 'Sukar').length
-    const totalSoal = latestData.analyzedData.length
+  if (latestData) {
+    const sukarCount = latestData.metadata?.soalSukar ?? latestData.analyzedData?.filter((d: any) => d.pCat === 'Sukar').length ?? 0
+    const totalSoal = latestData.metadata?.totalSoal ?? latestData.analyzedData?.length ?? 0
     
     if (sukarCount > totalSoal * 0.3) {
       insights.push({
@@ -54,7 +57,7 @@ export default function SmartRecommendations({ sessions }: { sessions: any[] }) 
       })
     }
 
-    const revisiCount = latestData.analyzedData.filter((d: any) => d.decision === 'Revisi' || d.decision === 'Dibuang' || d.decision === 'Gugur').length
+    const revisiCount = latestData.metadata?.soalRevisi ?? latestData.analyzedData?.filter((d: any) => d.decision === 'Revisi' || d.decision === 'Dibuang' || d.decision === 'Gugur').length ?? 0
     if (revisiCount > totalSoal * 0.2) {
       insights.push({
         type: 'info',
