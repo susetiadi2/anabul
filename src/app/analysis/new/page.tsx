@@ -105,14 +105,18 @@ export default function NewAnalysisPage() {
         </Link>
         
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 print:hidden">
-          <h1 className="text-2xl font-bold">Buat Analisis Baru</h1>
+          <h1 className="text-2xl font-bold">
+            {analysisResult ? 'Hasil Analisis Butir Soal' : 'Buat Analisis Baru'}
+          </h1>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => window.print()}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 font-bold text-sm transition-colors shadow-sm"
-            >
-              <Printer className="w-4 h-4" /> Cetak PDF
-            </button>
+            {analysisResult && (
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 font-bold text-sm transition-colors shadow-sm"
+              >
+                <Printer className="w-4 h-4" /> Cetak PDF
+              </button>
+            )}
             <button 
               onClick={() => setShowGuide(true)} 
               className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-200 shadow-sm"
