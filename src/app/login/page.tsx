@@ -57,8 +57,11 @@ export default function LoginPage() {
         .single()
       
       setCheckingLicense(false)
-      if (data?.schools?.name) {
-        setSchoolName(data.schools.name)
+      const schoolsData: any = data?.schools;
+      const fetchedSchoolName = Array.isArray(schoolsData) ? schoolsData[0]?.name : schoolsData?.name;
+      
+      if (fetchedSchoolName) {
+        setSchoolName(fetchedSchoolName)
         setLicenseSchoolLocked(true)
       } else {
         setLicenseSchoolLocked(false)
