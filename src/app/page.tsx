@@ -19,7 +19,11 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase.from('user_profiles').select('name, school_name').eq('id', user.id).single()
 
-  const { data: sessions, error } = await supabase.from('analysis_sessions').select('*').order('created_at', { ascending: false })
+  const { data: sessions, error } = await supabase
+    .from('analysis_sessions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
   
   // Hitung Global Insight
   let totalAnalisis = sessions?.length || 0
