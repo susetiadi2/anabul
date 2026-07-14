@@ -294,8 +294,8 @@ export default function NewAnalysisPage() {
                   <table className="w-full text-sm text-center border-collapse">
                     <thead className="text-xs text-slate-700 bg-slate-50 border-b border-t">
                       <tr>
-                        <th className="px-4 py-3 border-x text-left" rowSpan={2}>No</th>
-                        <th className="px-4 py-3 border-x text-left min-w-[200px]" rowSpan={2}>Nama Siswa</th>
+                        <th className="w-[50px] min-w-[50px] px-2 py-3 border-x text-center sticky left-0 z-20 bg-slate-50" rowSpan={2}>No</th>
+                        <th className="w-[250px] min-w-[250px] px-4 py-3 border-x text-left sticky left-[50px] z-20 bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" rowSpan={2}>Nama Siswa</th>
                         <th className="px-4 py-2 border-x border-b" colSpan={analysisResult.analyzedData.length}>Nomor Soal</th>
                         <th className="px-4 py-3 border-x" rowSpan={2}>Skor Total</th>
                         <th className="px-4 py-3 border-x" rowSpan={2}>Nilai Akhir</th>
@@ -306,8 +306,8 @@ export default function NewAnalysisPage() {
                         ))}
                       </tr>
                       {/* Baris Kunci Jawaban / Max Skor */}
-                      <tr className="bg-blue-50/50 border-b border-blue-200">
-                        <td colSpan={2} className="px-4 py-2 font-bold text-right border-x text-blue-800">
+                      <tr className="bg-blue-50 border-b border-blue-200">
+                        <td colSpan={2} className="px-4 py-2 font-bold text-right border-x text-blue-800 sticky left-0 z-20 bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           {examType === 'uraian' ? 'Skor Maksimal' : 'Kunci Jawaban'}
                         </td>
                         {analysisResult.analyzedData.map((q: any) => (
@@ -321,9 +321,9 @@ export default function NewAnalysisPage() {
                     </thead>
                     <tbody>
                       {analysisResult.studentData.map((s: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-2 border-x text-left text-slate-500">{idx + 1}</td>
-                          <td className="px-4 py-2 border-x text-left font-semibold text-slate-700">{s.name}</td>
+                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors group">
+                          <td className="w-[50px] min-w-[50px] px-2 py-2 border-x text-center text-slate-500 sticky left-0 z-10 bg-white group-hover:bg-slate-50">{idx + 1}</td>
+                          <td className="w-[250px] min-w-[250px] px-4 py-2 border-x text-left font-semibold text-slate-700 sticky left-[50px] z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{s.name}</td>
                           {analysisResult.analyzedData.map((q: any) => {
                             let ansVal = s.itemScores[`${q.id}_ans`]
                             let isCorrect = false
