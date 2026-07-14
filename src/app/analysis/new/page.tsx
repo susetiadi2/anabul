@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { analyzeData } from '@/lib/analyzer'
-import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X } from 'lucide-react'
+import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X, Printer } from 'lucide-react'
 import Link from 'next/link'
 import ChartsDashboard from '@/components/ChartsDashboard'
 
@@ -100,18 +100,26 @@ export default function NewAnalysisPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-flex items-center text-blue-600 font-semibold mb-6 hover:underline">
+        <Link href="/" className="inline-flex items-center text-blue-600 font-semibold mb-6 hover:underline print:hidden">
           <ArrowLeft className="w-4 h-4 mr-1" /> Kembali ke Dashboard
         </Link>
         
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 print:hidden">
           <h1 className="text-2xl font-bold">Buat Analisis Baru</h1>
-          <button 
-            onClick={() => setShowGuide(true)} 
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-200 shadow-sm"
-          >
-            <BookOpen className="w-4 h-4" /> Panduan Analisis
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => window.print()}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 font-bold text-sm transition-colors shadow-sm"
+            >
+              <Printer className="w-4 h-4" /> Cetak PDF
+            </button>
+            <button 
+              onClick={() => setShowGuide(true)} 
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-200 shadow-sm"
+            >
+              <BookOpen className="w-4 h-4" /> Panduan Analisis
+            </button>
+          </div>
         </div>
 
         {!analysisResult ? (
@@ -148,7 +156,7 @@ export default function NewAnalysisPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl flex justify-between items-center">
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl flex justify-between items-center print:hidden">
               <div>
                 <h3 className="font-bold text-lg">Analisis Selesai!</h3>
                 <p className="text-sm">Reliabilitas: {analysisResult.summary.reliability} - {analysisResult.summary.relCat}</p>
@@ -158,7 +166,7 @@ export default function NewAnalysisPage() {
               </button>
             </div>
             
-            <div className="flex border-b border-slate-200 mb-6 mt-4 overflow-x-auto">
+            <div className="flex border-b border-slate-200 mb-6 mt-4 overflow-x-auto print:hidden">
               <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-1.5 px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'text-violet-600 border-b-2 border-violet-600' : 'text-slate-500 hover:text-slate-700'}`}>
                 <BarChart2 className="w-4 h-4" /> Dashboard Grafik
               </button>
@@ -358,7 +366,7 @@ export default function NewAnalysisPage() {
               )
             })()}
 
-            <button onClick={() => setAnalysisResult(null)} className="text-blue-600 font-semibold text-sm hover:underline">
+            <button onClick={() => setAnalysisResult(null)} className="text-blue-600 font-semibold text-sm hover:underline print:hidden">
               Ulangi Analisis
             </button>
           </div>
@@ -603,6 +611,23 @@ export default function NewAnalysisPage() {
           </div>
         </div>
       )}
+
+      {/* Global Print Styles */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background-color: white !important;
+          }
+          /* Fix tab content overlapping or page break issues */
+          .max-w-4xl { max-w: 100% !important; margin: 0 !important; padding: 0 !important; }
+        }
+      `}} />
     </div>
   )
 }
