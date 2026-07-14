@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { analyzeData } from '@/lib/analyzer'
-import { Upload, Save, ArrowLeft, BarChart2 } from 'lucide-react'
+import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X } from 'lucide-react'
 import Link from 'next/link'
 import ChartsDashboard from '@/components/ChartsDashboard'
 
@@ -18,6 +18,7 @@ export default function NewAnalysisPage() {
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('ringkasan')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -103,7 +104,15 @@ export default function NewAnalysisPage() {
           <ArrowLeft className="w-4 h-4 mr-1" /> Kembali ke Dashboard
         </Link>
         
-        <h1 className="text-2xl font-bold mb-8">Buat Analisis Baru</h1>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+          <h1 className="text-2xl font-bold">Buat Analisis Baru</h1>
+          <button 
+            onClick={() => setShowGuide(true)} 
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-200 shadow-sm"
+          >
+            <BookOpen className="w-4 h-4" /> Panduan Analisis
+          </button>
+        </div>
 
         {!analysisResult ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
@@ -375,6 +384,221 @@ export default function NewAnalysisPage() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Mengalihkan ke Dashboard...
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guide Modal Keren */}
+      {showGuide && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Header Modal */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Panduan Analisis Butir Soal</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Petunjuk praktis membaca hasil analisis</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowGuide(false)}
+                className="w-10 h-10 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content Modal */}
+            <div className="p-6 md:p-8 overflow-y-auto bg-slate-50/50">
+              <div className="space-y-8 max-w-3xl mx-auto">
+                
+                {/* Bagian 1 */}
+                <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                    <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">1</span> 
+                    Tingkat Kesukaran (P)
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <p className="text-sm text-slate-700"><strong>Apa yang diukur?</strong> Menunjukkan seberapa mudah atau sulit suatu soal berdasarkan jawaban siswa.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <p className="text-xs font-bold text-blue-800 mb-2">Pilihan Ganda</p>
+                        <p className="text-sm font-mono text-blue-900 font-semibold bg-white px-3 py-2 rounded-lg shadow-sm border border-blue-100 text-center">P = ∑ Benar ÷ ∑ Siswa</p>
+                      </div>
+                      <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                        <p className="text-xs font-bold text-emerald-800 mb-2">Soal Uraian</p>
+                        <p className="text-sm font-mono text-emerald-900 font-semibold bg-white px-3 py-2 rounded-lg shadow-sm border border-emerald-100 text-center">P = Rata-rata Skor ÷ Skor Maks</p>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <table className="w-full text-sm text-left text-slate-600">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                          <tr><th className="px-4 py-3">Nilai P</th><th className="px-4 py-3">Kategori</th><th className="px-4 py-3">Tindakan</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr className="bg-white"><td className="px-4 py-3 font-medium">0,00 – 0,30</td><td className="px-4 py-3"><span className="text-red-600 font-bold">Sukar</span></td><td className="px-4 py-3">Periksa apakah soal terlalu sulit atau materi belum diajarkan dengan baik.</td></tr>
+                          <tr className="bg-slate-50/50"><td className="px-4 py-3 font-medium">0,31 – 0,70</td><td className="px-4 py-3"><span className="text-emerald-600 font-bold">Sedang</span></td><td className="px-4 py-3">Soal sudah baik dan ideal digunakan.</td></tr>
+                          <tr className="bg-white"><td className="px-4 py-3 font-medium">0,71 – 1,00</td><td className="px-4 py-3"><span className="text-blue-600 font-bold">Mudah</span></td><td className="px-4 py-3">Soal terlalu mudah. Pertimbangkan tingkatkan berpikir siswa.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-slate-500 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl"><strong>💡 Catatan:</strong> Tes yang baik sebaiknya didominasi oleh soal berkategori <strong>sedang</strong>.</p>
+                  </div>
+                </section>
+
+                {/* Bagian 2 */}
+                <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                    <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-sm">2</span> 
+                    Daya Pembeda (D)
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <p className="text-sm text-slate-700 mb-2"><strong>Apa yang diukur?</strong> Menunjukkan kemampuan soal dalam membedakan siswa yang menguasai materi dengan yang belum menguasai.</p>
+                      <ul className="text-sm text-slate-600 list-disc list-inside">
+                        <li><strong>Kelompok Atas</strong> = 27% siswa nilai tertinggi.</li>
+                        <li><strong>Kelompok Bawah</strong> = 27% siswa nilai terendah.</li>
+                      </ul>
+                    </div>
+                    <div className="bg-violet-50/50 p-4 rounded-xl border border-violet-100 text-center">
+                      <p className="text-sm font-mono text-violet-900 font-semibold bg-white px-3 py-2 rounded-lg shadow-sm border border-violet-100 inline-block">D = (Rata² Atas − Rata² Bawah) ÷ Skor Maks</p>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <table className="w-full text-sm text-left text-slate-600">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                          <tr><th className="px-4 py-3">Nilai D</th><th className="px-4 py-3">Kategori</th><th className="px-4 py-3">Rekomendasi</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr className="bg-white"><td className="px-4 py-3 font-medium">≥ 0,40</td><td className="px-4 py-3"><span className="text-emerald-600 font-bold whitespace-nowrap">Sangat Baik</span></td><td className="px-4 py-3">Pertahankan. Sangat efektif membedakan kemampuan.</td></tr>
+                          <tr className="bg-slate-50/50"><td className="px-4 py-3 font-medium">0,30 – 0,39</td><td className="px-4 py-3"><span className="text-blue-600 font-bold whitespace-nowrap">Baik</span></td><td className="px-4 py-3">Layak digunakan kembali.</td></tr>
+                          <tr className="bg-white"><td className="px-4 py-3 font-medium">0,20 – 0,29</td><td className="px-4 py-3"><span className="text-amber-600 font-bold whitespace-nowrap">Cukup</span></td><td className="px-4 py-3">Sebaiknya direvisi agar lebih baik.</td></tr>
+                          <tr className="bg-slate-50/50"><td className="px-4 py-3 font-medium">&lt; 0,20</td><td className="px-4 py-3"><span className="text-rose-600 font-bold whitespace-nowrap">Jelek</span></td><td className="px-4 py-3">Perlu direvisi besar atau diganti.</td></tr>
+                          <tr className="bg-rose-50"><td className="px-4 py-3 font-medium text-rose-700">Negatif</td><td className="px-4 py-3"><span className="text-rose-700 font-bold">Sangat Bermasalah</span></td><td className="px-4 py-3 text-rose-700">Periksa kunci jawaban! Siswa pintar justru banyak menjawab salah.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Bagian 3 & 4 (Grid) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Validitas */}
+                  <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                      <span className="w-7 h-7 rounded-full bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center text-sm">3</span> 
+                      Validitas Butir
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">Mengukur apakah suatu soal benar-benar mengukur kompetensi yang dituju (Korelasi Pearson).</p>
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <table className="w-full text-sm text-left text-slate-600">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                          <tr><th className="px-3 py-2">Nilai r</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Ket</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr className="bg-white"><td className="px-3 py-2 font-medium">≥ 0,25</td><td className="px-3 py-2"><span className="text-emerald-600 font-bold">Valid</span></td><td className="px-3 py-2">Layak pakai</td></tr>
+                          <tr className="bg-slate-50"><td className="px-3 py-2 font-medium">&lt; 0,25</td><td className="px-3 py-2"><span className="text-rose-600 font-bold">Tdk Valid</span></td><td className="px-3 py-2">Perlu diganti</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  {/* Reliabilitas */}
+                  <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                      <span className="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-sm">4</span> 
+                      Reliabilitas Tes
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">Menunjukkan tingkat konsistensi seluruh soal dalam satu tes (Cronbach's Alpha).</p>
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <table className="w-full text-sm text-left text-slate-600">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                          <tr><th className="px-3 py-2">Alpha</th><th className="px-3 py-2">Kategori</th><th className="px-3 py-2">Ket</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr className="bg-white"><td className="px-3 py-2 font-medium">≥ 0,70</td><td className="px-3 py-2"><span className="text-emerald-600 font-bold">Tinggi</span></td><td className="px-3 py-2">Sangat konsisten</td></tr>
+                          <tr className="bg-slate-50"><td className="px-3 py-2 font-medium">0,40 - 0,69</td><td className="px-3 py-2"><span className="text-amber-600 font-bold">Sedang</span></td><td className="px-3 py-2">Cukup baik</td></tr>
+                          <tr className="bg-white"><td className="px-3 py-2 font-medium">&lt; 0,40</td><td className="px-3 py-2"><span className="text-rose-600 font-bold">Rendah</span></td><td className="px-3 py-2">Perlu perbaikan</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Bagian 5 */}
+                <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                    <span className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-sm">5</span> 
+                    Analisis Pengecoh
+                  </h3>
+                  <p className="text-sm text-slate-600 mb-4">Menilai apakah pilihan jawaban yang salah (A, B, C, D, atau E) benar-benar mampu mengecoh siswa. Pengecoh yang baik sebaiknya dipilih oleh <strong>minimal 5% peserta</strong>.</p>
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
+                    <table className="w-full text-sm text-left text-slate-600">
+                      <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                        <tr><th className="px-4 py-3">Kondisi</th><th className="px-4 py-3">Interpretasi</th><th className="px-4 py-3">Tindakan</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        <tr className="bg-white"><td className="px-4 py-3 font-medium">Dipilih ≥ 5% siswa</td><td className="px-4 py-3"><span className="text-emerald-600 font-bold">Berfungsi</span></td><td className="px-4 py-3">Pertahankan.</td></tr>
+                        <tr className="bg-slate-50/50"><td className="px-4 py-3 font-medium">Dipilih &lt; 5% siswa</td><td className="px-4 py-3"><span className="text-amber-600 font-bold">Kurang Berfungsi</span></td><td className="px-4 py-3">Pertimbangkan revisi opsi.</td></tr>
+                        <tr className="bg-white"><td className="px-4 py-3 font-medium">Dipilih 0% siswa</td><td className="px-4 py-3"><span className="text-rose-600 font-bold">Tidak Berfungsi</span></td><td className="px-4 py-3">Ganti pengecoh dengan pilihan yang lebih meyakinkan.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                {/* Bagian 6 */}
+                <section className="bg-slate-800 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-700 text-white">
+                  <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
+                    🎯 Rekomendasi Pengambilan Keputusan
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-4 p-4 rounded-xl bg-slate-700/50 border border-slate-600 items-start">
+                      <span className="text-xl">✅</span>
+                      <div>
+                        <p className="font-bold text-emerald-400 mb-1">Pertahankan soal</p>
+                        <p className="text-sm text-slate-300">Tingkat kesukaran sedang, daya pembeda baik, valid, dan pengecoh berfungsi.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 p-4 rounded-xl bg-slate-700/50 border border-slate-600 items-start">
+                      <span className="text-xl">⚠️</span>
+                      <div>
+                        <p className="font-bold text-amber-400 mb-1">Revisi seperlunya</p>
+                        <p className="text-sm text-slate-300">Tingkat kesukaran terlalu mudah/sukar, tetapi daya pembeda masih baik.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 p-4 rounded-xl bg-slate-700/50 border border-slate-600 items-start">
+                      <span className="text-xl">🛠️</span>
+                      <div>
+                        <p className="font-bold text-orange-400 mb-1">Perbaiki sebelum digunakan kembali</p>
+                        <p className="text-sm text-slate-300">Daya pembeda rendah, validitas rendah, atau pengecoh tidak berfungsi.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 p-4 rounded-xl bg-rose-900/40 border border-rose-800 items-start">
+                      <span className="text-xl">🚫</span>
+                      <div>
+                        <p className="font-bold text-rose-400 mb-1">Jangan digunakan</p>
+                        <p className="text-sm text-rose-200">Daya pembeda negatif. Periksa ulang kunci jawaban, redaksi, atau kemungkinan kesalahan soal!</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+            
+            {/* Footer Modal */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-white flex justify-end">
+              <button 
+                onClick={() => setShowGuide(false)}
+                className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+              >
+                Tutup Panduan
+              </button>
             </div>
           </div>
         </div>
