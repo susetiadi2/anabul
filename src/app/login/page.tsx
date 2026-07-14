@@ -43,8 +43,16 @@ export default function LoginPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    if (mode !== 'register' || role !== 'pengawas' || !licenseCode || licenseCode.length < 5) {
+    // Reset saat mode bukan register atau role superadmin
+    if (mode !== 'register' || role === 'superadmin') {
       setLicenseSchoolLocked(false)
+      setSchoolName('')
+      return
+    }
+    // Belum cukup panjang, reset tapi jangan fetch
+    if (!licenseCode || licenseCode.trim().length < 5) {
+      setLicenseSchoolLocked(false)
+      setSchoolName('')
       return
     }
 
@@ -54,19 +62,21 @@ export default function LoginPage() {
         .from('licenses')
         .select('school_id, schools(name)')
         .eq('code', licenseCode.trim().toUpperCase())
+        .eq('is_active', true)
         .single()
-      
+
       setCheckingLicense(false)
-      const schoolsData: any = data?.schools;
-      const fetchedSchoolName = Array.isArray(schoolsData) ? schoolsData[0]?.name : schoolsData?.name;
-      
-      if (fetchedSchoolName) {
-        setSchoolName(fetchedSchoolName)
+      const schoolsData: any = data?.schools
+      const fetched = Array.isArray(schoolsData) ? schoolsData[0]?.name : schoolsData?.name
+
+      if (fetched) {
+        setSchoolName(fetched)
         setLicenseSchoolLocked(true)
       } else {
+        setSchoolName('')
         setLicenseSchoolLocked(false)
       }
-    }, 800)
+    }, 700)
 
     return () => clearTimeout(timer)
   }, [licenseCode, role, mode])
@@ -249,40 +259,76 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Nama Sekolah — disembunyikan jika Superadmin */}
+              {/* Kode Lisensi + Nama Sekolah — untuk semua peran kecuali Superadmin */}
               {role !== 'superadmin' && (
-              <div>
-                <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">Nama Sekolah</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Contoh: SMA Negeri 1 Bandung"
-                    value={schoolName}
-                    onChange={(e) => setSchoolName(e.target.value)}
-                    disabled={licenseSchoolLocked}
-                    className={`w-full border text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-4 transition-all ${
-                      licenseSchoolLocked 
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 opacity-90 cursor-not-allowed shadow-inner' 
-                        : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500/10 shadow-sm'
-                    }`}
-                  />
-                  {checkingLicense && (
-                    <div className="absolute right-3 top-3 text-slate-400">
-                      <RefreshCw className="w-5 h-5 animate-spin" />
+                <>
+                  {/* Kode Lisensi */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <label className="block text-amber-800 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                      🔑 Kode Lisensi <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Contoh: ANASOL-SMP1-2025"
+                        value={licenseCode}
+                        onChange={(e) => {
+                          setLicenseCode(e.target.value.toUpperCase())
+                          setLicenseSchoolLocked(false)
+                          setSchoolName('')
+                        }}
+                        className="w-full bg-white border border-amber-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 pr-10 text-sm font-mono tracking-widest focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all"
+                      />
+                      {checkingLicense && (
+                        <div className="absolute right-3 top-3.5 text-amber-400">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        </div>
+                      )}
+                      {licenseSchoolLocked && !checkingLicense && (
+                        <div className="absolute right-3 top-3.5 text-emerald-500">
+                          <CheckCircle className="w-4 h-4" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {licenseSchoolLocked && (
-                    <div className="absolute right-3 top-3 text-emerald-600">
-                      <CheckCircle className="w-5 h-5" />
+                    {/* Pesan status lisensi */}
+                    {licenseSchoolLocked && (
+                      <p className="text-emerald-600 text-xs mt-2 font-bold flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Kode valid — Sekolah berhasil ditemukan!
+                      </p>
+                    )}
+                    {!checkingLicense && !licenseSchoolLocked && licenseCode.trim().length >= 5 && (
+                      <p className="text-red-500 text-xs mt-2 font-semibold">⚠️ Kode tidak ditemukan atau tidak aktif.</p>
+                    )}
+                    {!licenseCode && (
+                      <p className="text-amber-700/70 text-xs mt-2">Kode lisensi diberikan oleh Administrator AnasolApp.</p>
+                    )}
+                  </div>
+
+                  {/* Nama Sekolah — otomatis dari lisensi */}
+                  <div>
+                    <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                      Nama Sekolah
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Terisi otomatis setelah kode lisensi valid"
+                        value={schoolName}
+                        readOnly
+                        className={`w-full border text-sm rounded-xl px-4 py-3 pr-10 transition-all ${
+                          licenseSchoolLocked
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold cursor-not-allowed'
+                            : 'bg-slate-100 border-slate-200 text-slate-400 placeholder-slate-300 cursor-not-allowed'
+                        }`}
+                      />
+                      {licenseSchoolLocked && (
+                        <div className="absolute right-3 top-3 text-emerald-500">
+                          <CheckCircle className="w-5 h-5" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {licenseSchoolLocked && (
-                  <p className="text-emerald-600 text-xs mt-2 font-bold flex items-center gap-1">
-                    <CheckCircle className="w-3.5 h-3.5" /> Sekolah otomatis terisi dari Lisensi
-                  </p>
-                )}
-              </div>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -350,21 +396,7 @@ export default function LoginPage() {
               </span>
             </div>
           )}
-          {mode === 'register' && role === 'pengawas' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm">
-              <label className="block text-amber-800 text-xs font-extrabold uppercase tracking-wider mb-1.5">
-                🔑 Kode Lisensi Pengawas
-              </label>
-              <input
-                type="text"
-                placeholder="Contoh: ANABUS-PENGAWAS-2025"
-                value={licenseCode}
-                onChange={(e) => setLicenseCode(e.target.value)}
-                className="w-full bg-white border border-amber-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 shadow-sm transition-all"
-              />
-              <p className="text-amber-700/80 text-xs mt-2 font-medium">Kode ini hanya diberikan oleh Administrator AnasolApp.</p>
-            </div>
-          )}
+
 
           {/* PIN Keamanan — hanya muncul jika mendaftar sebagai Superadmin */}
           {mode === 'register' && role === 'superadmin' && (
