@@ -14,6 +14,8 @@ export default async function DashboardPage() {
     return redirect('/login')
   }
 
+  const { data: profile } = await supabase.from('user_profiles').select('name, school_name').eq('id', user.id).single()
+
   // Nanti kita akan ambil data sesi dari tabel 'analysis_sessions'
   // const { data: sessions } = await supabase.from('analysis_sessions').select('*').order('created_at', { ascending: false })
   const sessions: any[] = [] // Placeholder
@@ -30,7 +32,12 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-slate-600 hidden md:inline-block">{user.email}</span>
+            {profile && (
+              <div className="hidden md:flex flex-col items-end mr-2">
+                <span className="text-sm font-bold text-slate-800">{profile.name}</span>
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{profile.school_name}</span>
+              </div>
+            )}
             <form action="/auth/signout" method="post">
               <button className="flex items-center text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
                 <LogOut className="w-4 h-4 mr-1.5" /> Keluar
