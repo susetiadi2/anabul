@@ -46,9 +46,21 @@ export default async function DashboardPage() {
   const persentaseKetuntasan = totalSiswa > 0 ? Math.round((totalTuntas / totalSiswa) * 100) : 0
   const persentaseValid = totalSoal > 0 ? Math.round((totalValid / totalSoal) * 100) : 0
 
+  // Dynamic Greeting
+  const currentHour = new Date().getUTCHours() + 7
+  const hour = currentHour % 24
+  let greeting = 'Selamat Pagi'
+  if (hour >= 11 && hour < 15) greeting = 'Selamat Siang'
+  else if (hour >= 15 && hour < 18) greeting = 'Selamat Sore'
+  else if (hour >= 18 || hour < 4) greeting = 'Selamat Malam'
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-hidden">
+      {/* Background Ornaments for Glassmorphism */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px] pointer-events-none"></div>
+      
+      <nav className="bg-white/70 backdrop-blur-xl border-b border-white/40 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-inner">A</div>
@@ -73,17 +85,17 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-8">
+      <main className="max-w-7xl mx-auto p-6 md:p-8 relative z-10">
         
         {/* Greetings & Actions */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Selamat Datang, {profile?.name?.split(' ')[0] || 'Guru'}! 👋</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{greeting}, {profile?.name?.split(' ')[0] || 'Guru'}! 👋</h1>
             <p className="text-slate-500 mt-1 font-medium">Ini adalah ringkasan kinerja evaluasi belajar yang telah Anda lakukan.</p>
           </div>
           <Link 
             href="/analysis/new" 
-            className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            className="flex items-center justify-center bg-blue-600/90 backdrop-blur-md border border-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-[0_8px_20px_rgb(37,99,235,0.25)] hover:shadow-[0_8px_25px_rgb(37,99,235,0.4)] hover:-translate-y-0.5"
           >
             <FolderPlus className="w-5 h-5 mr-2" /> Buat Analisis Baru
           </Link>
@@ -92,8 +104,9 @@ export default async function DashboardPage() {
         {/* Global Insight (Hero Cards) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {/* Card 1: Total Analisis */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+          <div className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:bg-white/80 transition-all duration-300">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50/50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
             <div className="relative z-10">
               <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Total Analisis</p>
               <h3 className="text-4xl font-black text-slate-800">{totalAnalisis} <span className="text-sm font-semibold text-slate-500">Dokumen</span></h3>
@@ -101,8 +114,9 @@ export default async function DashboardPage() {
           </div>
 
           {/* Card 2: Total Siswa */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+          <div className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:bg-white/80 transition-all duration-300">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50/50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
             <div className="relative z-10">
               <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Total Siswa</p>
               <h3 className="text-4xl font-black text-slate-800">{totalSiswa} <span className="text-sm font-semibold text-slate-500">Dievaluasi</span></h3>
@@ -110,7 +124,8 @@ export default async function DashboardPage() {
           </div>
 
           {/* Card 3: Ketuntasan */}
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 shadow-md shadow-emerald-500/20 relative overflow-hidden group text-white">
+          <div className="bg-gradient-to-br from-emerald-500/90 to-teal-600/90 backdrop-blur-xl border border-emerald-400/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(16,185,129,0.25)] relative overflow-hidden group text-white">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/20 blur-2xl rounded-full group-hover:scale-150 transition-transform duration-700"></div>
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
             <div className="relative z-10">
               <p className="text-xs font-black text-emerald-100 mb-1 uppercase tracking-widest">Rata-rata Ketuntasan</p>
@@ -122,8 +137,9 @@ export default async function DashboardPage() {
           </div>
 
           {/* Card 4: Kualitas Soal */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-300 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+          <div className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:bg-white/80 transition-all duration-300">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50/50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
             <div className="relative z-10">
               <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Kualitas Bank Soal</p>
               <h3 className="text-4xl font-black text-slate-800">{persentaseValid}% <span className="text-sm font-semibold text-slate-500">Valid</span></h3>
