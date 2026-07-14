@@ -16,9 +16,32 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase.from('user_profiles').select('name, school_name').eq('id', user.id).single()
 
-  // Nanti kita akan ambil data sesi dari tabel 'analysis_sessions'
-  // const { data: sessions } = await supabase.from('analysis_sessions').select('*').order('created_at', { ascending: false })
-  const sessions: any[] = [] // Placeholder
+  const { data: sessions, error } = await supabase.from('analysis_sessions').select('*').order('created_at', { ascending: false })
+  
+  // Hitung Global Insight
+  let totalAnalisis = sessions?.length || 0
+  let totalSiswa = 0
+  let totalTuntas = 0
+  let totalSoal = 0
+  let totalValid = 0
+
+  sessions?.forEach((session: any) => {
+    const data = session.data_payload
+    if (data) {
+      const siswaCount = data.studentData?.length || 0
+      totalSiswa += siswaCount
+      totalTuntas += data.summary?.tuntas || 0
+      
+      const soalCount = data.analyzedData?.length || 0
+      totalSoal += soalCount
+      
+      const validCount = data.analyzedData?.filter((d: any) => d.valStatus === 'Valid').length || 0
+      totalValid += validCount
+    }
+  })
+
+  const persentaseKetuntasan = totalSiswa > 0 ? Math.round((totalTuntas / totalSiswa) * 100) : 0
+  const persentaseValid = totalSoal > 0 ? Math.round((totalValid / totalSoal) * 100) : 0
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
@@ -48,20 +71,65 @@ export default async function DashboardPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto p-6 md:p-8">
-        <div className="flex justify-between items-end mb-8">
+        
+        {/* Greetings & Actions */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard Analisis</h1>
-            <p className="text-sm text-slate-500 mt-1">Kelola dan lihat kembali riwayat analisis butir soal Anda.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Selamat Datang, {profile?.name?.split(' ')[0] || 'Guru'}! 👋</h1>
+            <p className="text-slate-500 mt-1 font-medium">Ini adalah ringkasan kinerja evaluasi belajar yang telah Anda lakukan.</p>
           </div>
           <Link 
             href="/analysis/new" 
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm"
+            className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
           >
-            <FolderPlus className="w-4 h-4 mr-2" /> Analisis Baru
+            <FolderPlus className="w-5 h-5 mr-2" /> Buat Analisis Baru
           </Link>
         </div>
 
-        {sessions.length === 0 ? (
+        {/* Global Insight (Hero Cards) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {/* Card 1: Total Analisis */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+            <div className="relative z-10">
+              <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Total Analisis</p>
+              <h3 className="text-4xl font-black text-slate-800">{totalAnalisis} <span className="text-sm font-semibold text-slate-500">Dokumen</span></h3>
+            </div>
+          </div>
+
+          {/* Card 2: Total Siswa */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+            <div className="relative z-10">
+              <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Total Siswa</p>
+              <h3 className="text-4xl font-black text-slate-800">{totalSiswa} <span className="text-sm font-semibold text-slate-500">Dievaluasi</span></h3>
+            </div>
+          </div>
+
+          {/* Card 3: Ketuntasan */}
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 shadow-md shadow-emerald-500/20 relative overflow-hidden group text-white">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+            <div className="relative z-10">
+              <p className="text-xs font-black text-emerald-100 mb-1 uppercase tracking-widest">Rata-rata Ketuntasan</p>
+              <div className="flex items-end gap-2">
+                <h3 className="text-4xl font-black">{persentaseKetuntasan}%</h3>
+                <span className="text-sm font-medium text-emerald-100 mb-1">{totalTuntas} Lulus</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Kualitas Soal */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-300 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+            <div className="relative z-10">
+              <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">Kualitas Bank Soal</p>
+              <h3 className="text-4xl font-black text-slate-800">{persentaseValid}% <span className="text-sm font-semibold text-slate-500">Valid</span></h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium">Dari {totalSoal} butir soal yg diuji</p>
+            </div>
+          </div>
+        </div>
+
+        {(!sessions || sessions.length === 0) ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
             <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
               <ChartBar className="w-10 h-10" />
