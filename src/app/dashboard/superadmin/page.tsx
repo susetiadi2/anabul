@@ -117,9 +117,9 @@ export default function SuperadminDashboard() {
       level: newSchoolLevel,
       cluster_name: newSchoolCluster.trim() || null,
     }
-    // Jika kolom headmaster_name dan nip sudah ada di db, hilangkan komentar di bawah:
-    // payload.headmaster_name = newHeadmasterName.trim() || null
-    // payload.headmaster_nip = newHeadmasterNip.trim() || null
+    // Kolom headmaster_name dan nip sekarang sudah ada di DB
+    payload.headmaster_name = newHeadmasterName.trim() || null
+    payload.headmaster_nip = newHeadmasterNip.trim() || null
     
     const { error } = await supabase.from('schools').insert(payload)
     if (error) return showMsg('error', error.message)
@@ -156,9 +156,9 @@ export default function SuperadminDashboard() {
       level: editSchoolLevel,
       cluster_name: editSchoolCluster.trim() || null,
     }
-    // Jika kolom headmaster_name dan nip sudah ada di db, hilangkan komentar di bawah:
-    // payload.headmaster_name = editHeadmasterName.trim() || null
-    // payload.headmaster_nip = editHeadmasterNip.trim() || null
+    // Kolom headmaster_name dan nip sekarang sudah ada di DB
+    payload.headmaster_name = editHeadmasterName.trim() || null
+    payload.headmaster_nip = editHeadmasterNip.trim() || null
 
     const { error } = await supabase.from('schools').update(payload).eq('id', editingSchool.id)
     
