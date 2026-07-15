@@ -17,7 +17,11 @@ export default async function DashboardPage() {
     return redirect('/login')
   }
 
-  const { data: profile } = await supabase.from('user_profiles').select('name, school_name').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('user_profiles').select('name, school_name, role').eq('id', user.id).single()
+
+  if (profile?.role === 'superadmin') return redirect('/dashboard/superadmin')
+  if (profile?.role === 'kepala_sekolah') return redirect('/dashboard/principal')
+  if (profile?.role === 'pengawas') return redirect('/dashboard/supervisor')
 
   const { data: sessions, error } = await supabase
     .from('analysis_sessions')
