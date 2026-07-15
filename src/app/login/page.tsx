@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const [name, setName] = useState('')
   const [schoolName, setSchoolName] = useState('')
+  const [clusterName, setClusterName] = useState('')
   const [role, setRole] = useState<Role>('guru')
   const [licenseCode, setLicenseCode] = useState('')
   const [superadminPin, setSuperadminPin] = useState('')
@@ -43,8 +44,8 @@ export default function LoginPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Reset saat mode bukan register atau role superadmin
-    if (mode !== 'register' || role === 'superadmin') {
+    // Reset saat mode bukan register atau role superadmin/pengawas (pengawas ketik manual)
+    if (mode !== 'register' || role === 'superadmin' || role === 'pengawas') {
       setLicenseSchoolLocked(false)
       setSchoolName('')
       return
@@ -130,8 +131,11 @@ export default function LoginPage() {
     if (!nip || !password || !name) {
       setError('NIP, Password, dan Nama Lengkap wajib diisi.'); return
     }
-    if (role !== 'superadmin' && !schoolName) {
+    if (role !== 'superadmin' && role !== 'pengawas' && !schoolName) {
       setError('Nama Sekolah wajib diisi.'); return
+    }
+    if (role === 'pengawas' && !clusterName.trim()) {
+      setError('Nama Gugus / Wilayah Binaan wajib diisi.'); return
     }
     if (role === 'pengawas' && !licenseCode) {
       setError('Kode Lisensi wajib diisi untuk mendaftar sebagai Pengawas.'); return
@@ -165,9 +169,10 @@ export default function LoginPage() {
         id: authData.user.id,
         nip: nip.trim(),
         name: name.trim(),
-        school_name: role === 'superadmin' ? 'Pusat (Superadmin)' : schoolName.trim(),
+        school_name: role === 'superadmin' ? 'Pusat (Superadmin)' : role === 'pengawas' ? clusterName.trim() : schoolName.trim(),
+        cluster_name: role === 'pengawas' ? clusterName.trim() : null,
         role,
-        license_code: role === 'pengawas' ? licenseCode.trim() : null,
+        license_code: role !== 'superadmin' ? licenseCode.trim() : null,
       })
       if (profileErr) throw profileErr
 
@@ -307,11 +312,25 @@ export default function LoginPage() {
                     )}
                   </div>
 
-                  {/* Nama Sekolah — otomatis dari lisensi */}
-                  <div>
-                    <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
-                      Nama Sekolah
-                    </label>
+                  {/* Input Gugus untuk Pengawas, atau Nama Sekolah otomatis dari lisensi untuk yang lain */}
+                  {role === 'pengawas' ? (
+                    <div>
+                      <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                        Nama Gugus / Wilayah Binaan <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Gugus Melati, atau Kecamatan X"
+                        value={clusterName}
+                        onChange={(e) => setClusterName(e.target.value)}
+                        className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                        Nama Sekolah
+                      </label>
                     <div className="relative">
                       <input
                         type="text"
@@ -324,13 +343,14 @@ export default function LoginPage() {
                             : 'bg-slate-100 border-slate-200 text-slate-400 placeholder-slate-300 cursor-not-allowed'
                         }`}
                       />
-                      {licenseSchoolLocked && (
-                        <div className="absolute right-3 top-3 text-emerald-500">
-                          <CheckCircle className="w-5 h-5" />
-                        </div>
-                      )}
+                        {licenseSchoolLocked && (
+                          <div className="absolute right-3 top-3 text-emerald-500">
+                            <CheckCircle className="w-5 h-5" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </>
               )}
             </>

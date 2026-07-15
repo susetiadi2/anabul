@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save } from 'lucide-react'
 
-type School = { id: string; name: string; address: string | null; level: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
+type School = { id: string; name: string; address: string | null; level: string | null; cluster_name: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
 type License = { id: string; code: string; description: string | null; is_active: boolean; school_id: string | null; created_at: string; schools?: { name: string } | null }
 type UserProfile = { id: string; nip: string; name: string; school_name: string; role: string; created_at: string }
 
@@ -31,6 +31,7 @@ export default function SuperadminDashboard() {
   const [newSchoolName, setNewSchoolName] = useState('')
   const [newSchoolAddress, setNewSchoolAddress] = useState('')
   const [newSchoolLevel, setNewSchoolLevel] = useState('SMA')
+  const [newSchoolCluster, setNewSchoolCluster] = useState('')
   const [newHeadmasterName, setNewHeadmasterName] = useState('')
   const [newHeadmasterNip, setNewHeadmasterNip] = useState('')
 
@@ -44,6 +45,7 @@ export default function SuperadminDashboard() {
   const [editSchoolName, setEditSchoolName] = useState('')
   const [editSchoolAddress, setEditSchoolAddress] = useState('')
   const [editSchoolLevel, setEditSchoolLevel] = useState('SMA')
+  const [editSchoolCluster, setEditSchoolCluster] = useState('')
   const [editHeadmasterName, setEditHeadmasterName] = useState('')
   const [editHeadmasterNip, setEditHeadmasterNip] = useState('')
 
@@ -104,12 +106,13 @@ export default function SuperadminDashboard() {
       name: newSchoolName.trim(),
       address: newSchoolAddress.trim() || null,
       level: newSchoolLevel,
+      cluster_name: newSchoolCluster.trim() || null,
       headmaster_name: newHeadmasterName.trim() || null,
       headmaster_nip: newHeadmasterNip.trim() || null,
     })
     if (error) return showMsg('error', error.message)
     showMsg('success', `Sekolah "${newSchoolName}" berhasil ditambahkan!`)
-    setNewSchoolName(''); setNewSchoolAddress(''); setNewHeadmasterName(''); setNewHeadmasterNip('');
+    setNewSchoolName(''); setNewSchoolAddress(''); setNewHeadmasterName(''); setNewHeadmasterNip(''); setNewSchoolCluster('');
     fetchAll()
   }
 
@@ -125,6 +128,7 @@ export default function SuperadminDashboard() {
     setEditSchoolName(s.name)
     setEditSchoolAddress(s.address || '')
     setEditSchoolLevel(s.level || 'SMA')
+    setEditSchoolCluster(s.cluster_name || '')
     setEditHeadmasterName(s.headmaster_name || '')
     setEditHeadmasterNip(s.headmaster_nip || '')
   }
@@ -136,6 +140,7 @@ export default function SuperadminDashboard() {
       name: editSchoolName.trim(),
       address: editSchoolAddress.trim() || null,
       level: editSchoolLevel,
+      cluster_name: editSchoolCluster.trim() || null,
       headmaster_name: editHeadmasterName.trim() || null,
       headmaster_nip: editHeadmasterNip.trim() || null,
     }).eq('id', editingSchool.id)
@@ -317,6 +322,10 @@ export default function SuperadminDashboard() {
                   </select>
                 </div>
                 <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Gugus / Wilayah</label>
+                  <input value={newSchoolCluster} onChange={e => setNewSchoolCluster(e.target.value)} placeholder="Misal: Gugus Melati" className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
                   <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Kepala Sekolah</label>
                   <input value={newHeadmasterName} onChange={e => setNewHeadmasterName(e.target.value)} placeholder="Nama Lengkap & Gelar" className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
                 </div>
@@ -344,7 +353,7 @@ export default function SuperadminDashboard() {
                     </div>
                     <div>
                       <div className="font-bold text-slate-900 text-base">{school.name}</div>
-                      <div className="text-sm text-slate-500 mt-0.5">{school.address ?? 'Alamat belum diisi'}</div>
+                      <div className="text-sm text-slate-500 mt-0.5">{school.address ?? 'Alamat belum diisi'} {school.cluster_name ? `• ${school.cluster_name}` : ''}</div>
                       {(school.headmaster_name || school.headmaster_nip) && (
                         <div className="text-xs text-slate-400 mt-1 font-medium">Kepsek: {school.headmaster_name || '-'} {school.headmaster_nip ? `(${school.headmaster_nip})` : ''}</div>
                       )}
@@ -511,6 +520,10 @@ export default function SuperadminDashboard() {
                   <select value={editSchoolLevel} onChange={e => setEditSchoolLevel(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 appearance-none transition-all">
                     {['SD', 'SMP', 'SMA', 'SMK'].map(l => <option key={l}>{l}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Gugus / Wilayah</label>
+                  <input value={editSchoolCluster} onChange={e => setEditSchoolCluster(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
                 </div>
                 <div>
                   <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Kepala Sekolah</label>
