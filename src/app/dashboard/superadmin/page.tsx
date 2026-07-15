@@ -39,6 +39,17 @@ export default function SuperadminDashboard() {
   const [newLicenseDesc, setNewLicenseDesc] = useState('')
   const [newLicenseSchoolId, setNewLicenseSchoolId] = useState('')
 
+  // Edit sekolah
+  const [editingSchool, setEditingSchool] = useState<School | null>(null)
+  const [editSchoolName, setEditSchoolName] = useState('')
+  const [editSchoolAddress, setEditSchoolAddress] = useState('')
+  const [editSchoolLevel, setEditSchoolLevel] = useState('SMA')
+  const [editHeadmasterName, setEditHeadmasterName] = useState('')
+  const [editHeadmasterNip, setEditHeadmasterNip] = useState('')
+
+  // Hapus sekolah
+  const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null)
+
   // Edit lisensi
   const [editingLicense, setEditingLicense] = useState<License | null>(null)
   const [editCode, setEditCode] = useState('')
@@ -105,7 +116,40 @@ export default function SuperadminDashboard() {
   const toggleSchool = async (id: string, current: boolean) => {
     const { error } = await supabase.from('schools').update({ is_active: !current }).eq('id', id)
     if (error) return showMsg('error', error.message)
-    showMsg('success', `Status sekolah berhasil diubah.`)
+    showMsg('success', current ? 'Sekolah dinonaktifkan.' : 'Sekolah diaktifkan.')
+    fetchAll()
+  }
+
+  const openEditSchool = (s: School) => {
+    setEditingSchool(s)
+    setEditSchoolName(s.name)
+    setEditSchoolAddress(s.address || '')
+    setEditSchoolLevel(s.level || 'SMA')
+    setEditHeadmasterName(s.headmaster_name || '')
+    setEditHeadmasterNip(s.headmaster_nip || '')
+  }
+
+  const saveEditSchool = async () => {
+    if (!editingSchool) return
+    if (!editSchoolName.trim()) return showMsg('error', 'Nama sekolah wajib diisi.')
+    const { error } = await supabase.from('schools').update({
+      name: editSchoolName.trim(),
+      address: editSchoolAddress.trim() || null,
+      level: editSchoolLevel,
+      headmaster_name: editHeadmasterName.trim() || null,
+      headmaster_nip: editHeadmasterNip.trim() || null,
+    }).eq('id', editingSchool.id)
+    if (error) return showMsg('error', error.message)
+    showMsg('success', 'Sekolah berhasil diperbarui!')
+    setEditingSchool(null)
+    fetchAll()
+  }
+
+  const deleteSchool = async (id: string) => {
+    const { error } = await supabase.from('schools').delete().eq('id', id)
+    if (error) return showMsg('error', error.message)
+    showMsg('success', 'Sekolah berhasil dihapus.')
+    setDeletingSchoolId(null)
     fetchAll()
   }
 
@@ -306,9 +350,25 @@ export default function SuperadminDashboard() {
                       )}
                     </div>
                   </div>
-                  <button onClick={() => toggleSchool(school.id, school.is_active)} className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all border ${school.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-red-50 hover:border-red-200 hover:text-red-700' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'}`}>
-                    {school.is_active ? '✓ Status Aktif' : '✗ Dinonaktifkan'}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => toggleSchool(school.id, school.is_active)} className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all border ${school.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-red-50 hover:border-red-200 hover:text-red-700' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'}`}>
+                      {school.is_active ? '✓ Status Aktif' : '✗ Dinonaktifkan'}
+                    </button>
+                    <button
+                      onClick={() => openEditSchool(school)}
+                      className="p-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                      title="Edit Sekolah"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingSchoolId(school.id)}
+                      className="p-2 rounded-xl border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-all"
+                      title="Hapus Sekolah"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -429,7 +489,49 @@ export default function SuperadminDashboard() {
           </div>
         )}
 
-        {/* ─── MODAL KONFIRMASI HAPUS ─── */}
+        {/* ─── MODAL EDIT SEKOLAH ─── */}
+        {editingSchool && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-200 overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black text-xl text-slate-800 flex items-center gap-2"><Pencil className="w-5 h-5 text-blue-500" /> Edit Sekolah</h3>
+                <button onClick={() => setEditingSchool(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Sekolah *</label>
+                  <input value={editSchoolName} onChange={e => setEditSchoolName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Alamat</label>
+                  <input value={editSchoolAddress} onChange={e => setEditSchoolAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Jenjang</label>
+                  <select value={editSchoolLevel} onChange={e => setEditSchoolLevel(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 appearance-none transition-all">
+                    {['SD', 'SMP', 'SMA', 'SMK'].map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Kepala Sekolah</label>
+                  <input value={editHeadmasterName} onChange={e => setEditHeadmasterName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">NIP Kepala Sekolah</label>
+                  <input value={editHeadmasterNip} onChange={e => setEditHeadmasterNip(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEditingSchool(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                  <button onClick={saveEditSchool} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                    <Save className="w-4 h-4" /> Simpan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── MODAL KONFIRMASI HAPUS LISENSI ─── */}
         {deletingLicenseId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-200 text-center">
@@ -441,6 +543,23 @@ export default function SuperadminDashboard() {
               <div className="flex gap-3">
                 <button onClick={() => setDeletingLicenseId(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
                 <button onClick={() => deleteLicense(deletingLicenseId)} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-500/20 transition-all">Ya, Hapus!</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── MODAL KONFIRMASI HAPUS SEKOLAH ─── */}
+        {deletingSchoolId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-200 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="font-black text-xl text-slate-800 mb-2">Hapus Sekolah?</h3>
+              <p className="text-slate-500 text-sm mb-8">Tindakan ini <span className="font-bold text-red-500">tidak dapat dibatalkan</span>. Menghapus sekolah juga bisa memutus akses guru dan lisensi yang terkait dengan sekolah ini.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeletingSchoolId(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                <button onClick={() => deleteSchool(deletingSchoolId)} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-500/20 transition-all">Ya, Hapus!</button>
               </div>
             </div>
           </div>
