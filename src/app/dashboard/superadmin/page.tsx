@@ -42,6 +42,7 @@ export default function SuperadminDashboard() {
 
   // Edit sekolah
   const [editingSchool, setEditingSchool] = useState<School | null>(null)
+  const [isSavingSchool, setIsSavingSchool] = useState(false)
   const [editSchoolName, setEditSchoolName] = useState('')
   const [editSchoolAddress, setEditSchoolAddress] = useState('')
   const [editSchoolLevel, setEditSchoolLevel] = useState('SMA')
@@ -110,14 +111,17 @@ export default function SuperadminDashboard() {
 
   const addSchool = async () => {
     if (!newSchoolName.trim()) return showMsg('error', 'Nama sekolah wajib diisi.')
-    const { error } = await supabase.from('schools').insert({
+    const payload: any = {
       name: newSchoolName.trim(),
       address: newSchoolAddress.trim() || null,
       level: newSchoolLevel,
       cluster_name: newSchoolCluster.trim() || null,
-      headmaster_name: newHeadmasterName.trim() || null,
-      headmaster_nip: newHeadmasterNip.trim() || null,
-    })
+    }
+    // Jika kolom headmaster_name dan nip sudah ada di db, hilangkan komentar di bawah:
+    // payload.headmaster_name = newHeadmasterName.trim() || null
+    // payload.headmaster_nip = newHeadmasterNip.trim() || null
+    
+    const { error } = await supabase.from('schools').insert(payload)
     if (error) return showMsg('error', error.message)
     showMsg('success', `Sekolah "${newSchoolName}" berhasil ditambahkan!`)
     setNewSchoolName(''); setNewSchoolAddress(''); setNewHeadmasterName(''); setNewHeadmasterNip(''); setNewSchoolCluster('');
@@ -144,14 +148,21 @@ export default function SuperadminDashboard() {
   const saveEditSchool = async () => {
     if (!editingSchool) return
     if (!editSchoolName.trim()) return showMsg('error', 'Nama sekolah wajib diisi.')
-    const { error } = await supabase.from('schools').update({
+    
+    setIsSavingSchool(true)
+    const payload: any = {
       name: editSchoolName.trim(),
       address: editSchoolAddress.trim() || null,
       level: editSchoolLevel,
       cluster_name: editSchoolCluster.trim() || null,
-      headmaster_name: editHeadmasterName.trim() || null,
-      headmaster_nip: editHeadmasterNip.trim() || null,
-    }).eq('id', editingSchool.id)
+    }
+    // Jika kolom headmaster_name dan nip sudah ada di db, hilangkan komentar di bawah:
+    // payload.headmaster_name = editHeadmasterName.trim() || null
+    // payload.headmaster_nip = editHeadmasterNip.trim() || null
+
+    const { error } = await supabase.from('schools').update(payload).eq('id', editingSchool.id)
+    
+    setIsSavingSchool(false)
     if (error) return showMsg('error', error.message)
     showMsg('success', 'Sekolah berhasil diperbarui!')
     setEditingSchool(null)
@@ -571,9 +582,10 @@ export default function SuperadminDashboard() {
                   <input value={editHeadmasterNip} onChange={e => setEditHeadmasterNip(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setEditingSchool(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                  <button onClick={saveEditSchool} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> Simpan
+                  <button onClick={() => setEditingSchool(null)} disabled={isSavingSchool} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-all">Batal</button>
+                  <button onClick={saveEditSchool} disabled={isSavingSchool} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 disabled:opacity-75 transition-all flex items-center justify-center gap-2">
+                    {isSavingSchool ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isSavingSchool ? 'Menyimpan...' : 'Simpan'}
                   </button>
                 </div>
               </div>
