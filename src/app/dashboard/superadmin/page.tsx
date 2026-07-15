@@ -77,7 +77,8 @@ export default function SuperadminDashboard() {
         return
       }
       supabase.from('user_profiles').select('role').eq('id', authData.user.id).single().then(({ data }) => {
-        if (!data || data.role !== 'superadmin') {
+        const role = data?.role?.toLowerCase().trim()
+        if (!data || role !== 'superadmin') {
           router.replace('/login')
         } else {
           fetchAll()

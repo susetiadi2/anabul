@@ -107,13 +107,14 @@ export default function LoginPage() {
         .eq('id', data.user.id)
         .single()
 
+      const userRole = profile?.role?.toLowerCase().trim() || 'guru'
       const redirectMap: Record<string, string> = {
         guru: '/',
         kepala_sekolah: '/dashboard/principal',
         pengawas: '/dashboard/supervisor',
         superadmin: '/dashboard/superadmin',
       }
-      router.push(redirectMap[profile?.role ?? 'guru'] ?? '/')
+      router.push(redirectMap[userRole] ?? '/')
       router.refresh()
     } catch (err: any) {
       const msg = err.message || ''
