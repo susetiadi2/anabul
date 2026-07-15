@@ -58,8 +58,16 @@ export default function SuperadminDashboard() {
   const [editDesc, setEditDesc] = useState('')
   const [editSchoolId, setEditSchoolId] = useState('')
 
-  // Konfirmasi hapus
+  // Konfirmasi hapus lisensi
   const [deletingLicenseId, setDeletingLicenseId] = useState<string | null>(null)
+
+  // Edit pengguna
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
+  const [editUserName, setEditUserName] = useState('')
+  const [editUserNip, setEditUserNip] = useState('')
+  
+  // Hapus pengguna
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -210,6 +218,35 @@ export default function SuperadminDashboard() {
     if (error) return showMsg('error', error.message)
     showMsg('success', 'Lisensi berhasil dihapus.')
     setDeletingLicenseId(null)
+    fetchAll()
+  }
+
+  const openEditUser = (u: UserProfile) => {
+    setEditingUser(u)
+    setEditUserName(u.name)
+    setEditUserNip(u.nip)
+  }
+
+  const saveEditUser = async () => {
+    if (!editingUser) return
+    if (!editUserName.trim() || !editUserNip.trim()) return showMsg('error', 'Nama dan NIP wajib diisi.')
+    const { error } = await supabase.from('user_profiles').update({
+      name: editUserName.trim(),
+      nip: editUserNip.trim()
+    }).eq('id', editingUser.id)
+    if (error) return showMsg('error', error.message)
+    showMsg('success', 'Data pengguna berhasil diperbarui!')
+    setEditingUser(null)
+    fetchAll()
+  }
+
+  const deleteUser = async (id: string) => {
+    // Karena id pengguna terkait auth, sebaiknya ditambahkan peringatan bahwa data profil saja yang dihapus.
+    // Atau auth users juga bisa dihapus via admin api, namun sementara kita hapus dari tabel user_profiles
+    const { error } = await supabase.from('user_profiles').delete().eq('id', id)
+    if (error) return showMsg('error', error.message)
+    showMsg('success', 'Pengguna berhasil dihapus.')
+    setDeletingUserId(null)
     fetchAll()
   }
 
@@ -600,13 +637,71 @@ export default function SuperadminDashboard() {
                         <div className="text-sm text-slate-500 mt-0.5">NIP: <span className="font-mono text-slate-600">{u.nip}</span> · {u.school_name}</div>
                       </div>
                     </div>
-                    <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shadow-sm ${ROLE_BADGE[u.role] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                      {ROLE_LABEL[u.role] ?? u.role}
-                    </span>
+                    <div className="flex items-center gap-4">
+                      <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shadow-sm ${ROLE_BADGE[u.role] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                        {ROLE_LABEL[u.role] ?? u.role}
+                      </span>
+                      {u.role !== 'superadmin' && (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => openEditUser(u)} className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-blue-500 hover:bg-blue-50 hover:border-blue-200 transition-all">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeletingUserId(u.id)} className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        )}
+        )}
+
+        {/* ─── MODAL EDIT PENGGUNA ─── */}
+        {editingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-200">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black text-xl text-slate-800 flex items-center gap-2"><Pencil className="w-5 h-5 text-blue-500" /> Edit Pengguna</h3>
+                <button onClick={() => setEditingUser(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Lengkap *</label>
+                  <input value={editUserName} onChange={e => setEditUserName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">NIP / No HP *</label>
+                  <input value={editUserNip} onChange={e => setEditUserNip(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEditingUser(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                  <button onClick={saveEditUser} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                    <Save className="w-4 h-4" /> Simpan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── MODAL KONFIRMASI HAPUS PENGGUNA ─── */}
+        {deletingUserId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-200 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="font-black text-xl text-slate-800 mb-2">Hapus Pengguna?</h3>
+              <p className="text-slate-500 text-sm mb-8">Tindakan ini <span className="font-bold text-red-500">tidak dapat dibatalkan</span>. Pengguna ini akan kehilangan profil dan akses terkait.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeletingUserId(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                <button onClick={() => deleteUser(deletingUserId)} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-500/20 transition-all">Ya, Hapus!</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
