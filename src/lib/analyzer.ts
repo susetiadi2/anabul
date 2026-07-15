@@ -55,6 +55,34 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         });
         
         studentRows = rawData.filter((_, idx) => idx !== kunciRowIndex);
+    } else if (examType === 'campuran') {
+        const kunciRowIndex = rawData.findIndex(row => {
+            const nameVal = String(row[nameKey] || "").toLowerCase();
+            return nameVal.includes("kunci");
+        });
+        const maxRowIndex = rawData.findIndex(row => {
+            const nameVal = String(row[nameKey] || "").toLowerCase();
+            return nameVal.includes("maksimal") || nameVal.includes("skor max") || nameVal.includes("nilai max") || nameVal === "max" || nameVal === "maks";
+        });
+
+        if (kunciRowIndex === -1 || maxRowIndex === -1) {
+            throw new Error(`Untuk tipe Campuran, baris "Kunci Jawaban" dan "Skor Maksimal" HARUS ada!`);
+        }
+
+        const kunciRow = rawData[kunciRowIndex];
+        const maxRow = rawData[maxRowIndex];
+
+        questionCols.forEach(q => {
+            const kVal = String(kunciRow[q] || "").trim().toUpperCase();
+            if (kVal && (kVal.match(/^[A-E]+$/) || kVal === 'B' || kVal === 'S' || kVal.includes(','))) {
+                kunciJawaban[q] = kVal;
+                maxScores[q] = parseFloat(maxRow[q]) || 1;
+            } else {
+                maxScores[q] = parseFloat(maxRow[q]) || 1;
+            }
+        });
+        
+        studentRows = rawData.filter((_, idx) => idx !== kunciRowIndex && idx !== maxRowIndex);
     } else {
         questionCols.forEach(q => maxScores[q] = 1);
         studentRows = rawData;
@@ -81,6 +109,13 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         questionCols.forEach(q => { distractorData[q] = { A:0, B:0, C:0, D:0, E:0, Kosong:0 }; });
     } else if (examType === 'bs') {
         questionCols.forEach(q => { distractorData[q] = { B:0, S:0, Kosong:0 }; });
+    } else if (examType === 'campuran') {
+        questionCols.forEach(q => { 
+            if (kunciJawaban[q]) {
+                if (kunciJawaban[q] === 'B' || kunciJawaban[q] === 'S') distractorData[q] = { B:0, S:0, Kosong:0 }; 
+                else distractorData[q] = { A:0, B:0, C:0, D:0, E:0, Kosong:0 };
+            }
+        });
     }
 
     const students = studentRows.map((row, idx) => {
@@ -90,9 +125,9 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         
         questionCols.forEach(q => {
             let score = 0;
-            if (examType === 'pg_huruf' || examType === 'bs') {
+            if ((examType === 'pg_huruf' || examType === 'bs') || (examType === 'campuran' && kunciJawaban[q])) {
                 let studentAns = String(row[q] || "").trim().toUpperCase();
-                if(examType === 'pg_huruf' && (studentAns === 'A.' || studentAns === 'A)')) studentAns = 'A';
+                if((examType === 'pg_huruf' || examType === 'campuran') && (studentAns === 'A.' || studentAns === 'A)')) studentAns = 'A';
                 
                 const correctAnsStr = kunciJawaban[q] || "";
                 const correctAnswers = correctAnsStr.split(',').map(ans => ans.trim().toUpperCase());
@@ -102,7 +137,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
                 if (distractorData[q] && distractorData[q][studentAns] !== undefined) {
                     distractorData[q][studentAns]++;
                 } else if (studentAns === "") {
-                    distractorData[q]['Kosong']++;
+                    if (distractorData[q]) distractorData[q]['Kosong']++;
                 }
                 itemScores[`${q}_ans`] = studentAns;
 
@@ -148,12 +183,12 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         else if (pCat !== "Sedang" && dCat === "Cukup") decision = "Revisi";
 
         let distractorObj: any = null;
-        if (examType === 'pg_huruf' || examType === 'bs') {
+        if (examType === 'pg_huruf' || examType === 'bs' || (examType === 'campuran' && kunciJawaban[q])) {
             const totalN = students.length;
             distractorObj = {};
-            const opts = examType === 'pg_huruf' ? ['A','B','C','D','E'] : ['B','S'];
+            const opts = (examType === 'pg_huruf' || (examType === 'campuran' && distractorData[q] && distractorData[q]['A'] !== undefined)) ? ['A','B','C','D','E'] : ['B','S'];
             opts.forEach(opt => {
-                const count = distractorData[q][opt];
+                const count = distractorData[q] ? distractorData[q][opt] : 0;
                 const pct = Math.round((count / totalN) * 100);
                 const isKey = kunciJawaban[q].includes(opt);
                 const isEffective = !isKey && pct >= 5;
@@ -162,11 +197,11 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         }
 
         return { 
-            id: q, p: pVal, pCat, d: dVal, dCat, validity, 
+            id: q, p: pVal, pCat, d: dVal, dCat, validity, decision,
             valStatus: validity > 0.25 ? "Valid" : "Tdk Valid", 
-            decision, maxScore: currentMax,
+            maxScore: currentMax,
             distractorData: distractorObj,
-            keyAns: (examType === 'pg_huruf' || examType === 'bs') ? kunciJawaban[q] : null
+            keyAns: (examType === 'pg_huruf' || examType === 'bs' || (examType === 'campuran' && kunciJawaban[q])) ? kunciJawaban[q] : null
         };
     });
 

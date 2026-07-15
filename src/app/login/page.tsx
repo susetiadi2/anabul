@@ -187,13 +187,13 @@ export default function LoginPage() {
       {/* Logo */}
       <div className="flex items-center gap-3 mb-8">
         <div 
-          className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-600/20 select-none cursor-pointer"
+          className="w-14 h-14 select-none cursor-pointer"
           onDoubleClick={() => {
             if (mode === 'register') setRole('superadmin')
           }}
           title="Double-click untuk akses rahasia"
         >
-          A
+          <img src="https://iili.io/CMHn0Cv.png" alt="Logo AnasolApp" className="w-full h-full object-contain rounded-2xl drop-shadow-md" />
         </div>
         <div>
           <div className="text-3xl font-black text-slate-900 tracking-tight leading-none">

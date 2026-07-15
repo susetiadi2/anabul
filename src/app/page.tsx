@@ -67,10 +67,11 @@ export default async function DashboardPage() {
       <nav className="bg-white/70 backdrop-blur-xl border-b border-white/40 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="flex justify-between items-center w-full max-w-[98%] mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-inner">A</div>
+            <img src="https://iili.io/CMHn0Cv.png" alt="Logo AnasolApp" className="w-10 h-10 object-contain rounded-xl" />
             <div>
               <div className="text-xl font-bold tracking-tight text-slate-900 leading-none">Anasol<span className="text-blue-600">App</span></div>
-              <div className="text-[11px] text-slate-500 font-medium tracking-wide">SAAS EDITION</div>
+              <div className="text-[11px] text-slate-500 font-medium tracking-wide">Aplikasi Analisis Butir Soal</div>
+              <div className="text-[9px] text-slate-400 font-medium tracking-wide">By: Susetiadi - Pengawas DS</div>
             </div>
           </div>
           <div className="flex items-center gap-4">

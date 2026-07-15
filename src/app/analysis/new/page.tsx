@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
@@ -5,22 +6,36 @@ import * as XLSX from 'xlsx'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { analyzeData } from '@/lib/analyzer'
-import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X, Printer } from 'lucide-react'
+import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X, Printer, DownloadCloud } from 'lucide-react'
 import Link from 'next/link'
 import ChartsDashboard from '@/components/ChartsDashboard'
-import { set as idbSet } from 'idb-keyval'
+import { set as idbSet, get as idbGet } from 'idb-keyval'
 
 export default function NewAnalysisPage() {
   const [file, setFile] = useState<File | null>(null)
   const [examType, setExamType] = useState('pg_huruf')
-  const [kkm, setKkm] = useState(75)
+  const [kkm, setKkm] = useState<number | string>(75)
   const [error, setError] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('ringkasan')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
-  const [identity, setIdentity] = useState({ mataPelajaran: '', kelas: '', jenisAsesmen: 'Asesmen Formatif (UH)', guru: '', nip: '', sekolah: '' })
+  const [isViewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).has('viewId');
+    }
+    return false;
+  })
+  const today = new Date().toISOString().split('T')[0];
+  const [identity, setIdentity] = useState({ 
+    mataPelajaran: 'Pendidikan Agama dan Budi Pekerti', mataPelajaranLain: '', 
+    tingkatKelas: 'Kelas 7', rombel: '', semester: 'Ganjil', 
+    jenisAsesmen: 'Asesmen Formatif (UH)', 
+    guru: '', nip: '', sekolah: '',
+    kepalaSekolah: '', nipKepalaSekolah: '',
+    tahunPelajaran: '2025/2026', tanggalPelaksanaan: today, materiPokok: ''
+  })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -42,7 +57,28 @@ export default function NewAnalysisPage() {
       }
     }
     fetchProfile()
-  }, [])
+
+    // Cek parameter viewId di URL untuk fitur Viewer
+    const params = new URLSearchParams(window.location.search);
+    const vId = params.get('viewId');
+    if (vId) {
+      const loadFromIdb = async () => {
+        try {
+          const data = await idbGet(`analysis_${vId}`);
+          if (data) {
+            setAnalysisResult(data);
+            setActiveTab('ringkasan');
+          } else {
+            setError("Data laporan lengkap tidak ditemukan di perangkat ini. Data detail masif hanya tersimpan secara permanen di perangkat lokal (laptop/browser) saat analisis pertama kali dibuat.");
+          }
+        } catch (err) {
+          console.error(err);
+          setError("Gagal memuat data dari penyimpanan lokal.");
+        }
+      }
+      loadFromIdb();
+    }
+  }, [supabase])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -50,6 +86,14 @@ export default function NewAnalysisPage() {
       setFile(selectedFile)
       setError('')
     }
+  }
+
+  const handleKkmBlur = () => {
+    let val = Number(kkm);
+    if (isNaN(val) || kkm === '') val = 75;
+    if (val < 0) val = 0;
+    if (val > 100) val = 100;
+    setKkm(val);
   }
 
   const processFile = () => {
@@ -66,7 +110,7 @@ export default function NewAnalysisPage() {
         const workbook = XLSX.read(data, { type: 'array' })
         const firstSheetName = workbook.SheetNames[0]
         
-        const aoa = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1 }) as any[][]
+        const aoa = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1 }) as unknown[][]
         let headerRowIndex = aoa.findIndex(row => {
             if (!row || !Array.isArray(row)) return false;
             const rowStr = row.join("").toLowerCase();
@@ -80,17 +124,84 @@ export default function NewAnalysisPage() {
             throw new Error('Data tidak ditemukan di dalam file.'); 
         }
 
-        const result = analyzeData(jsonData, examType, kkm)
+        const result = analyzeData(jsonData, examType, Number(kkm) || 75)
         setAnalysisResult(result)
         setIsProcessing(false)
-      } catch (err: any) { 
+      } catch (err: unknown) { 
         console.error(err)
-        setError(err.message || 'Gagal membaca file. Pastikan format valid.')
+        setError(err instanceof Error ? err.message : 'Gagal membaca file. Pastikan format valid.')
         setIsProcessing(false)
       }
     }
     reader.readAsArrayBuffer(file)
   }
+
+  const downloadTemplate = () => {
+    // ── 1. PG (A-E): Pilihan Ganda Huruf ──
+    const dataPG_Huruf = [
+      ['No', 'Nama Siswa', '1', '2', '3', '4', '5'],
+      ['', 'Kunci Jawaban', 'A', 'B', 'C', 'D', 'E'],
+      [1, 'Budi Santoso', 'A', 'B', 'C', 'D', 'E'],
+      [2, 'Siti Aminah', 'A', 'C', 'B', 'D', 'A'],
+      [3, 'Ahmad Fauzi', 'B', 'B', 'C', 'A', 'E']
+    ];
+
+    // ── 2. PG (0/1): Pilihan Ganda Dikotomi ──
+    const dataPG_Dikotomi = [
+      ['No', 'Nama Siswa', '1', '2', '3', '4', '5'],
+      ['', 'Kunci Jawaban', 1, 1, 1, 1, 1],
+      [1, 'Budi Santoso', 1, 1, 0, 1, 0],
+      [2, 'Siti Aminah', 1, 0, 1, 0, 1],
+      [3, 'Ahmad Fauzi', 0, 1, 1, 1, 0]
+    ];
+
+    // ── 3. Benar/Salah ──
+    const dataBS = [
+      ['No', 'Nama Siswa', '1', '2', '3', '4', '5'],
+      ['', 'Kunci Jawaban', 'B', 'S', 'B', 'S', 'B'],
+      [1, 'Budi Santoso', 'B', 'S', 'B', 'S', 'B'],
+      [2, 'Siti Aminah', 'B', 'B', 'S', 'S', 'B'],
+      [3, 'Ahmad Fauzi', 'S', 'S', 'B', 'B', 'S']
+    ];
+
+    // ── 4. Uraian ──
+    const dataUraian = [
+      ['No', 'Nama Siswa', '1', '2', '3', '4', '5'],
+      ['', 'Skor Maksimal', 10, 20, 20, 25, 25],
+      [1, 'Budi Santoso', 8, 15, 20, 20, 25],
+      [2, 'Siti Aminah', 10, 18, 15, 25, 20],
+      [3, 'Ahmad Fauzi', 7, 12, 18, 22, 15]
+    ];
+
+    // ── 5. Campuran (PG + Uraian) ──
+    const dataCampuran = [
+      ['No', 'Nama Siswa', '1', '2', '3', '4', '5'],
+      ['', 'Kunci Jawaban', 'A', 'B', 'C', '', ''],
+      ['', 'Skor Maksimal', 1, 1, 1, 20, 30],
+      [1, 'Budi Santoso', 'A', 'B', 'C', 18, 25],
+      [2, 'Siti Aminah', 'A', 'A', 'C', 20, 28],
+      [3, 'Ahmad Fauzi', 'B', 'B', 'A', 15, 22]
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const wscols = [{ wch: 5 }, { wch: 25 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }];
+
+    const sheets = [
+      { data: dataPG_Huruf, name: 'PG (A-E)' },
+      { data: dataPG_Dikotomi, name: 'PG Dikotomi (0-1)' },
+      { data: dataBS, name: 'Benar-Salah' },
+      { data: dataUraian, name: 'Uraian' },
+      { data: dataCampuran, name: 'Campuran (PG+Uraian)' }
+    ];
+
+    sheets.forEach(({ data, name }) => {
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!cols'] = wscols;
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    });
+
+    XLSX.writeFile(wb, "Template_Jawaban_AnasolApp.xlsx");
+  };
 
   const saveToCloud = async () => {
     try {
@@ -147,7 +258,7 @@ export default function NewAnalysisPage() {
         
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 print:hidden">
           <h1 className="text-2xl font-bold">
-            {analysisResult ? 'Hasil Analisis Butir Soal' : 'Buat Analisis Baru'}
+            {isViewMode ? 'Arsip Hasil Analisis' : (analysisResult ? 'Hasil Analisis Butir Soal' : 'Buat Analisis Baru')}
           </h1>
           <div className="flex items-center gap-2">
             {analysisResult && (
@@ -171,7 +282,7 @@ export default function NewAnalysisPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
             <div className="mb-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
               <h3 className="font-bold text-slate-800 mb-4">Identitas Laporan (Untuk Cetak)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Jenis Asesmen</label>
                   <select value={identity.jenisAsesmen} onChange={e => setIdentity({...identity, jenisAsesmen: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white">
@@ -183,13 +294,75 @@ export default function NewAnalysisPage() {
                     <option value="Latihan Soal">Latihan Soal</option>
                   </select>
                 </div>
+                
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Mata Pelajaran</label>
-                  <input type="text" value={identity.mataPelajaran} onChange={e => setIdentity({...identity, mataPelajaran: e.target.value})} placeholder="Contoh: Matematika" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
+                  <select value={identity.mataPelajaran} onChange={e => setIdentity({...identity, mataPelajaran: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                    <option value="Pendidikan Agama dan Budi Pekerti">Pendidikan Agama</option>
+                    <option value="Pendidikan Pancasila (PPKn)">Pendidikan Pancasila (PPKn)</option>
+                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                    <option value="Matematika">Matematika</option>
+                    <option value="Ilmu Pengetahuan Alam (IPA)">Ilmu Pengetahuan Alam (IPA)</option>
+                    <option value="Ilmu Pengetahuan Sosial (IPS)">Ilmu Pengetahuan Sosial (IPS)</option>
+                    <option value="Bahasa Inggris">Bahasa Inggris</option>
+                    <option value="PJOK">PJOK</option>
+                    <option value="Seni Budaya / Prakarya">Seni Budaya / Prakarya</option>
+                    <option value="Informatika">Informatika</option>
+                    <option value="Muatan Lokal">Muatan Lokal</option>
+                    <option value="Lainnya">Lainnya...</option>
+                  </select>
+                  {identity.mataPelajaran === 'Lainnya' && (
+                    <input type="text" value={identity.mataPelajaranLain} onChange={e => setIdentity({...identity, mataPelajaranLain: e.target.value})} placeholder="Ketik mapel..." className="w-full mt-2 px-4 py-2 border border-blue-300 rounded-lg text-sm bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Lingkup Materi / Topik</label>
+                  <input type="text" value={identity.materiPokok} onChange={e => setIdentity({...identity, materiPokok: e.target.value})} placeholder="Contoh: Sistem Pencernaan" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kelas</label>
+                    <select value={identity.tingkatKelas} onChange={e => setIdentity({...identity, tingkatKelas: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i+1} value={`Kelas ${i+1}`}>Kelas {i+1}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rombel</label>
+                    <input type="text" value={identity.rombel} onChange={e => setIdentity({...identity, rombel: e.target.value})} placeholder="Contoh: 1-A" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Semester</label>
+                    <select value={identity.semester} onChange={e => setIdentity({...identity, semester: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                      <option value="Ganjil">Ganjil</option>
+                      <option value="Genap">Genap</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Thn. Pelajaran</label>
+                    <select value={identity.tahunPelajaran} onChange={e => setIdentity({...identity, tahunPelajaran: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                      <option value="2025/2026">2025/2026</option>
+                      <option value="2026/2027">2026/2027</option>
+                      <option value="2027/2028">2027/2028</option>
+                      <option value="2028/2029">2028/2029</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal Pelaksanaan</label>
+                  <input type="date" value={identity.tanggalPelaksanaan} onChange={e => setIdentity({...identity, tanggalPelaksanaan: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kelas / Semester</label>
-                  <input type="text" value={identity.kelas} onChange={e => setIdentity({...identity, kelas: e.target.value})} placeholder="Contoh: IX / Ganjil" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kepala Sekolah</label>
+                  <input type="text" value={identity.kepalaSekolah} onChange={e => setIdentity({...identity, kepalaSekolah: e.target.value})} placeholder="Nama Kepala Sekolah" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white mb-2" />
+                  <input type="text" value={identity.nipKepalaSekolah} onChange={e => setIdentity({...identity, nipKepalaSekolah: e.target.value})} placeholder="NIP Kepala Sekolah" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 mt-3 font-medium">*Nama Guru dan Sekolah akan otomatis diambil dari profil Anda saat dicetak.</p>
@@ -197,22 +370,36 @@ export default function NewAnalysisPage() {
 
             <div className="mb-6">
                 <label className="block font-bold text-slate-800 mb-2">1. Pilih Jenis Instrumen</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {['pg_huruf', 'pg', 'bs', 'uraian'].map(type => (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {['pg_huruf', 'pg', 'bs', 'uraian', 'campuran'].map(type => (
                         <button key={type} onClick={() => setExamType(type)} className={`py-3 px-2 rounded-xl text-xs font-bold border-2 transition-all ${examType === type ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}>
-                            {type === 'pg_huruf' ? 'PG (A-E)' : type === 'pg' ? 'PG (0/1)' : type === 'bs' ? 'Benar/Salah' : 'Uraian'}
+                            {type === 'pg_huruf' ? 'PG (A-E)' : type === 'pg' ? 'PG (0/1)' : type === 'bs' ? 'Benar/Salah' : type === 'uraian' ? 'Uraian' : 'Campuran'}
                         </button>
                     ))}
                 </div>
             </div>
 
             <div className="mb-6">
-              <label className="block font-bold text-slate-800 mb-2">2. Nilai KKTP</label>
-              <input type="number" value={kkm} onChange={e => setKkm(Number(e.target.value))} className="w-32 px-4 py-2 border border-slate-300 rounded-lg" />
+              <label className="block font-bold text-slate-800 mb-1">2. Nilai KKTP</label>
+              <p className="text-xs text-slate-500 mb-3 font-medium">Anda dapat mengganti angka KKTP ini sesuai dengan kebutuhan Anda.</p>
+              <input 
+                type="number" 
+                min="0" max="100"
+                value={kkm} 
+                onChange={e => setKkm(e.target.value)} 
+                onBlur={handleKkmBlur}
+                className="w-32 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              />
+              {kkm === '' && <p className="text-rose-500 text-xs mt-1 font-medium">Nilai KKTP wajib diisi (0-100)</p>}
             </div>
 
             <div className="mb-8">
-              <label className="block font-bold text-slate-800 mb-2">3. Upload File Excel</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block font-bold text-slate-800">3. Upload File Excel</label>
+                <button onClick={downloadTemplate} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors shadow-sm border border-emerald-200">
+                  <DownloadCloud className="w-4 h-4" /> Unduh Template
+                </button>
+              </div>
               <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-blue-300 bg-blue-50/50 rounded-xl py-10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.xlsx" className="hidden" />
                   {file ? <div className="font-bold text-blue-700">{file.name}</div> : <><Upload className="w-8 h-8 text-blue-400 mb-2" /> <span className="font-semibold text-slate-600">Klik untuk upload file</span></>}
@@ -221,22 +408,25 @@ export default function NewAnalysisPage() {
 
             {error && <div className="text-red-500 font-semibold mb-4">{error}</div>}
 
-            <button onClick={processFile} disabled={!file || isProcessing} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50">
+            <button onClick={processFile} disabled={!file || isProcessing || kkm === ''} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50">
               {isProcessing ? 'Memproses...' : 'Mulai Analisis'}
             </button>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Kop Surat (Tampil di Print dan Layar) */}
-            <div className="bg-white border-b-4 border-slate-800 p-6 rounded-t-2xl md:p-8 text-center sm:text-left print:border-b-4 print:border-black print:rounded-none print:shadow-none print:p-0 print:mb-8 print:block">
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide">Laporan Analisis Butir Soal</h2>
-              <h3 className="text-lg font-bold text-slate-700 uppercase mb-4">{identity.sekolah}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-800 border-t border-slate-200 pt-4 print:border-black">
-                <div className="flex"><span className="w-36 font-semibold">Jenis Asesmen</span><span className="mr-2">:</span>{identity.jenisAsesmen || '-'}</div>
-                <div className="flex"><span className="w-36 font-semibold">Nama Guru</span><span className="mr-2">:</span>{identity.guru || '-'}</div>
-                <div className="flex"><span className="w-36 font-semibold">Mata Pelajaran</span><span className="mr-2">:</span>{identity.mataPelajaran || '-'}</div>
-                <div className="flex"><span className="w-36 font-semibold">NIP</span><span className="mr-2">:</span>{identity.nip || '-'}</div>
-                <div className="flex"><span className="w-36 font-semibold">Kelas/Semester</span><span className="mr-2">:</span>{identity.kelas || '-'}</div>
+            <div className="bg-white border-b-4 border-slate-800 p-6 rounded-t-2xl md:p-8 text-center sm:text-left print:border-b-[6px] print:border-double print:border-black print:rounded-none print:shadow-none print:p-0 print:mb-8 print:block print:text-center print:pb-4">
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide print:text-2xl print:mb-1">Laporan Analisis Butir Soal</h2>
+              <h3 className="text-lg font-bold text-slate-700 uppercase mb-4 print:text-xl print:text-black print:mb-0">{identity.sekolah}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2 text-sm text-slate-800 border-t border-slate-200 pt-4 print:border-t-0 print:pt-6 print:text-left print:text-black">
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Mata Pelajaran</span><span className="mr-2">:</span>{identity.mataPelajaran === 'Lainnya' ? (identity.mataPelajaranLain || '-') : identity.mataPelajaran}</div>
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Jenis Asesmen</span><span className="mr-2">:</span>{identity.jenisAsesmen || '-'}</div>
+                
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Lingkup Materi</span><span className="mr-2">:</span><span className="wrap-break-word">{identity.materiPokok || '-'}</span></div>
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Thn. Pelajaran</span><span className="mr-2">:</span>{identity.tahunPelajaran || '-'}</div>
+                
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Kelas/Semester</span><span className="mr-2">:</span>{`${identity.tingkatKelas} ${identity.rombel ? identity.rombel + ' ' : ''}/ ${identity.semester}`}</div>
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Tgl. Pelaksanaan</span><span className="mr-2">:</span>{identity.tanggalPelaksanaan ? new Date(identity.tanggalPelaksanaan).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : '-'}</div>
               </div>
             </div>
 
@@ -245,12 +435,14 @@ export default function NewAnalysisPage() {
                 <h3 className="font-bold text-lg">Analisis Selesai!</h3>
                 <p className="text-sm">Reliabilitas: {analysisResult.summary.reliability} - {analysisResult.summary.relCat}</p>
               </div>
-              <button onClick={saveToCloud} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center hover:bg-emerald-700">
-                <Save className="w-4 h-4 mr-2" /> Simpan ke Database
-              </button>
+              {!isViewMode && (
+                <button onClick={saveToCloud} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center hover:bg-emerald-700">
+                  <Save className="w-4 h-4 mr-2" /> Simpan ke Database
+                </button>
+              )}
             </div>
             
-            <div className="flex border-b border-slate-200 mb-6 mt-4 overflow-x-auto print:hidden">
+            <div className="flex border-b border-slate-200 mb-6 mt-4 overflow-x-auto sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-2 rounded-t-xl shadow-sm print:hidden">
               <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-1.5 px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'text-violet-600 border-b-2 border-violet-600' : 'text-slate-500 hover:text-slate-700'}`}>
                 <BarChart2 className="w-4 h-4" /> Dashboard Grafik
               </button>
@@ -268,71 +460,81 @@ export default function NewAnalysisPage() {
               </button>
             </div>
 
-            {activeTab === 'dashboard' && (
-              <ChartsDashboard analysisResult={analysisResult} kkm={kkm} />
-            )}
-            
-            {activeTab === 'ringkasan' && (
+            {/* ── Ringkasan & Statistik: tampil di halaman 1 bersama Kop Surat ── */}
+            <div className={`${activeTab === 'ringkasan' ? 'block' : 'hidden'} print:block print:mt-6`}>
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                  <h3 className="font-bold mb-4">Statistik Kelas</h3>
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="p-4 bg-slate-50 rounded-lg">Rata-rata: <span className="font-bold">{analysisResult.classStats.mean}</span></div>
-                    <div className="p-4 bg-slate-50 rounded-lg">Nilai Max: <span className="font-bold">{analysisResult.classStats.max}</span></div>
-                    <div className="p-4 bg-slate-50 rounded-lg">Nilai Min: <span className="font-bold">{analysisResult.classStats.min}</span></div>
-                    <div className="p-4 bg-slate-50 rounded-lg">Tuntas: <span className="font-bold">{analysisResult.summary.tuntas}</span></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:border-black print:rounded-none print:shadow-none">
+                  <h3 className="font-bold mb-4 print:text-black print:border-b print:border-black print:pb-2">Statistik Kelas</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 print:flex print:gap-0 print:border print:border-black">
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Rata-rata: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats.mean}</span></div>
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Simpangan Baku: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats.sd}</span></div>
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Nilai Max: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats.max}</span></div>
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Nilai Min: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats.min}</span></div>
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:rounded-none print:bg-white print:text-center print:text-xs">Siswa Tuntas: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.summary.tuntas} / {analysisResult.studentData.length}</span></div>
+                  </div>
+                  {/* Reliabilitas - hanya di print */}
+                  <div className="hidden print:flex print:items-center print:gap-8 print:mt-4 print:pt-2 print:border-t print:border-slate-300 print:text-sm">
+                    <div>Reliabilitas: <strong>{analysisResult.summary.reliability}</strong></div>
+                    <div>Kategori: <strong>{analysisResult.summary.relCat}</strong></div>
+                    <div>Soal Diterima: <strong>{analysisResult.summary.accepted} / {analysisResult.analyzedData.length} butir</strong></div>
                   </div>
                 </div>
 
-                <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl">
-                  <h3 className="font-bold mb-2">Kesimpulan Umum</h3>
-                  <p className="text-sm leading-relaxed">{analysisResult.summary.narrative}</p>
+                <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl print:border print:border-black print:rounded-none print:bg-white print:p-3">
+                  <h3 className="font-bold mb-2 print:text-black print:border-b print:border-black print:pb-1 print:mb-2">Kesimpulan Umum</h3>
+                  <p className="text-sm leading-relaxed print:text-xs print:leading-snug print:text-black">{analysisResult.summary.narrative}</p>
                 </div>
               </div>
-            )}
+            </div>
 
-            {activeTab === 'sebaran' && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <h3 className="font-bold mb-4">Sebaran Jawaban & Nilai Siswa</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-center border-collapse">
-                    <thead className="text-xs text-slate-700 bg-slate-50 border-b border-t shadow-sm">
+            {/* ── Dashboard Grafik: mulai dari halaman 2 ── */}
+            <div className={`transition-none print:break-before-page ${activeTab === 'dashboard' ? 'block' : 'overflow-hidden h-0 invisible absolute w-full left-0'} print:block! print:visible! print:h-auto! print:overflow-visible! print:static!`}>
+              <ChartsDashboard analysisResult={analysisResult} kkm={Number(kkm)} />
+            </div>
+
+
+            <div className={`${activeTab === 'sebaran' ? 'block' : 'hidden'} print:block sebaran-print-section`}>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:p-0">
+                <h3 className="font-bold mb-3 print:text-black print:text-base print:mb-2">Sebaran Jawaban &amp; Nilai Siswa</h3>
+                <div className="overflow-x-auto print:overflow-visible">
+                  <table className="w-full text-sm text-center border-collapse print:text-[9px] print:w-full">
+                    <thead className="text-xs text-slate-700 bg-slate-50 border-b border-t shadow-sm print:bg-slate-100">
                       <tr>
-                        <th className="w-[50px] min-w-[50px] px-2 py-4 border-x text-center sticky left-0 z-30 bg-slate-50 border-b border-slate-200" rowSpan={2}>No</th>
-                        <th className="w-[250px] min-w-[250px] px-4 py-4 border-x text-left sticky left-[50px] z-30 bg-slate-50 border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" rowSpan={2}>Nama Siswa</th>
-                        <th className="px-4 py-2 border-x border-b border-slate-200 bg-slate-100/50" colSpan={analysisResult.analyzedData.length}>Nomor Soal</th>
-                        <th className="px-4 py-4 border-x border-b border-slate-200 bg-slate-50" rowSpan={2}>Skor Total</th>
-                        <th className="px-4 py-4 border-x border-b border-slate-200 bg-slate-50" rowSpan={2}>Nilai Akhir</th>
+                        <th className="w-12.5 min-w-12.5 px-2 py-4 border-x text-center sticky left-0 z-30 bg-slate-50 border-b border-slate-200 print:static print:left-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:border print:border-black" rowSpan={2}>No</th>
+                        <th className="w-62.5 min-w-62.5 px-4 py-4 border-x text-left sticky left-12.5 z-30 bg-slate-50 border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:min-w-0 print:w-35 print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Nama Siswa</th>
+                        <th className="px-4 py-2 border-x border-b border-slate-200 bg-slate-100/50 print:px-1 print:py-1.5 print:bg-slate-100 print:border print:border-black print:font-bold" colSpan={analysisResult.analyzedData.length}>Nomor Soal</th>
+                        <th className="w-25 min-w-25 px-4 py-4 border-x border-slate-200 bg-slate-50 sticky right-25 z-30 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] border-b-2 print:static print:right-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Skor</th>
+                        <th className="w-25 min-w-25 px-4 py-4 border-x border-slate-200 bg-slate-50 sticky right-0 z-30 border-b-2 print:static print:right-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Nilai</th>
                       </tr>
                       <tr>
                         {analysisResult.analyzedData.map((q: any) => (
-                          <th key={q.id} className="w-[45px] min-w-[45px] max-w-[45px] py-2 border-x border-b border-slate-200 bg-slate-50 font-bold text-[11px]">{q.id}</th>
+                          <th key={q.id} className="w-11.25 min-w-11.25 max-w-11.25 py-2 border-x border-b border-slate-200 bg-slate-50 font-bold text-[11px] print:w-auto print:min-w-0 print:max-w-none print:px-0.5 print:py-1 print:text-[8px] print:bg-slate-100 print:border print:border-black">{q.id}</th>
                         ))}
                       </tr>
                       {/* Baris Kunci Jawaban / Max Skor */}
-                      <tr className="bg-blue-50 border-b-2 border-blue-200">
-                        <td colSpan={2} className="px-4 py-3 font-bold text-right border-x border-blue-200 text-blue-800 sticky left-0 z-30 bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                          {examType === 'uraian' ? 'Skor Maksimal :' : 'Kunci Jawaban :'}
+                      <tr className="bg-blue-50 border-b-2 border-blue-200 print:bg-blue-100">
+                        <td colSpan={2} className="px-4 py-3 font-bold text-right border-x border-blue-200 text-blue-800 sticky left-0 z-30 bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:px-1 print:py-1 print:text-[8px] print:bg-blue-100 print:shadow-none print:border print:border-black print:text-center">
+                          {examType === 'uraian' ? 'Skor Maks :' : (examType === 'campuran' ? 'Kunci/Maks :' : 'Kunci :')}
                         </td>
                         {analysisResult.analyzedData.map((q: any) => (
-                          <td key={q.id} className="w-[45px] min-w-[45px] max-w-[45px] py-3 border-x border-blue-200 font-bold text-[12px] text-blue-700 bg-blue-50/80">
-                            {examType === 'uraian' ? q.maxScore : (q.keyAns || '-')}
+                          <td key={q.id} className="w-11.25 min-w-11.25 max-w-11.25 py-3 border-x border-blue-200 font-bold text-[12px] text-blue-700 bg-blue-50/80 print:w-auto print:min-w-0 print:px-0.5 print:py-1 print:text-[8px] print:bg-blue-50 print:border print:border-black">
+                            {examType === 'uraian' ? q.maxScore : (examType === 'campuran' ? (q.keyAns || q.maxScore) : (q.keyAns || '-'))}
                           </td>
                         ))}
-                        <td className="px-4 py-3 border-x border-blue-200 font-bold text-blue-800 bg-blue-50">-</td>
-                        <td className="px-4 py-3 border-x border-blue-200 font-bold text-blue-800 bg-blue-50">100</td>
+                        <td className="w-25 min-w-25 px-4 py-3 border-x border-blue-200 font-bold text-blue-800 bg-blue-50 sticky right-25 z-30 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center print:static print:right-auto print:px-1 print:py-1 print:text-[8px] print:shadow-none print:border print:border-black">-</td>
+                        <td className="w-25 min-w-25 px-4 py-3 border-x border-blue-200 font-bold text-blue-800 bg-blue-50 sticky right-0 z-30 text-center print:static print:right-auto print:px-1 print:py-1 print:text-[8px] print:shadow-none print:border print:border-black">100</td>
                       </tr>
                     </thead>
                     <tbody>
                       {analysisResult.studentData.map((s: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors group">
-                          <td className="w-[50px] min-w-[50px] px-2 py-2.5 border-x text-center text-slate-500 sticky left-0 z-10 bg-white group-hover:bg-slate-50">{idx + 1}</td>
-                          <td className="w-[250px] min-w-[250px] px-4 py-2.5 border-x text-left font-medium text-slate-700 sticky left-[50px] z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{s.name}</td>
+                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors group print:border-black">
+                          <td className="w-12.5 min-w-12.5 px-2 py-2.5 border-x text-center text-slate-500 sticky left-0 z-10 bg-white group-hover:bg-slate-50 print:static print:left-auto print:px-0.5 print:py-0.5 print:text-[8px] print:border print:border-black print:bg-white">{idx + 1}</td>
+                          <td className="w-62.5 min-w-62.5 px-4 py-2.5 border-x text-left font-medium text-slate-700 sticky left-12.5 z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:min-w-0 print:w-auto print:px-1 print:py-0.5 print:text-[8px] print:shadow-none print:border print:border-black print:bg-white print:truncate print:max-w-32.5">{s.name}</td>
                           {analysisResult.analyzedData.map((q: any) => {
                             let ansVal = s.itemScores[`${q.id}_ans`]
                             let isCorrect = false
                             
-                            if (examType === 'uraian') {
+                            if (examType === 'uraian' || (examType === 'campuran' && !q.keyAns)) {
                               ansVal = s.itemScores[q.id]
                               isCorrect = ansVal === q.maxScore
                             } else {
@@ -340,21 +542,21 @@ export default function NewAnalysisPage() {
                               isCorrect = keys.includes(ansVal)
                             }
                             
-                            const cellColor = examType === 'uraian' 
+                            const cellColor = (examType === 'uraian' || (examType === 'campuran' && !q.keyAns)) 
                               ? (isCorrect ? 'text-emerald-700 font-bold bg-emerald-50/50' : 'text-slate-700 bg-white')
                               : (isCorrect ? 'text-emerald-700 font-bold bg-emerald-50' : 'text-rose-600 font-medium bg-rose-50')
                               
                             return (
-                              <td key={q.id} className={`w-[45px] min-w-[45px] max-w-[45px] p-0 border-x align-middle ${cellColor}`}>
-                                <div className="flex items-center justify-center w-full h-full min-h-[36px]">
+                              <td key={q.id} className={`w-11.25 min-w-11.25 max-w-11.25 p-0 border-x align-middle print:w-auto print:min-w-0 print:border print:border-black print:text-[8px] ${cellColor}`}>
+                                <div className="flex items-center justify-center w-full h-full min-h-9 print:min-h-0 print:h-auto print:p-0.5">
                                   {ansVal !== undefined && ansVal !== "" ? ansVal : '-'}
                                 </div>
                               </td>
                             )
                           })}
-                          <td className="px-4 py-2.5 border-x font-bold text-slate-600 bg-slate-50/50">{s.rawScore}</td>
-                          <td className="px-4 py-2.5 border-x font-bold bg-slate-50/50">
-                            <span className={`px-2.5 py-1 rounded-md text-[13px] ${s.finalScore >= kkm ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                          <td className="w-25 min-w-25 px-4 py-2.5 border-x font-bold text-slate-600 bg-white group-hover:bg-slate-50 sticky right-25 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center print:static print:right-auto print:px-0.5 print:py-0.5 print:text-[8px] print:shadow-none print:border print:border-black print:bg-white">{s.rawScore}</td>
+                          <td className="w-25 min-w-25 px-4 py-2.5 border-x font-bold bg-white group-hover:bg-slate-50 sticky right-0 z-10 text-center print:static print:right-auto print:px-0.5 print:py-0.5 print:text-[8px] print:shadow-none print:border print:border-black print:bg-white">
+                            <span className={`px-2.5 py-1 rounded-md text-[13px] print:text-[8px] print:px-0 print:py-0 print:rounded-none print:font-bold ${s.finalScore >= kkm ? 'bg-emerald-100 text-emerald-800 print:bg-transparent print:text-black' : 'bg-rose-100 text-rose-800 print:bg-transparent print:text-black'}`}>
                               {s.finalScore}
                             </span>
                           </td>
@@ -364,15 +566,14 @@ export default function NewAnalysisPage() {
                   </table>
                 </div>
               </div>
-            )}
+            </div>
 
-            {activeTab === 'butir' && (
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <h3 className="font-bold mb-4">Tabel Analisis Butir Soal</h3>
-              <div className="overflow-x-auto">
+            <div className={`${activeTab === 'butir' ? 'block' : 'hidden'} print:block print:break-before-page`}>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:p-0">
+              <h3 className="font-bold mb-4 print:text-black">Tabel Analisis Butir Soal</h3>
+              <div className="overflow-x-auto relative">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                  <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b sticky top-15 z-30 shadow-sm">
                     <tr>
                       <th className="px-4 py-3">No Soal</th>
                       <th className="px-4 py-3">Tkt Kesukaran (P)</th>
@@ -434,11 +635,23 @@ export default function NewAnalysisPage() {
                 </table>
               </div>
             </div>
-            )}
+            </div>
 
-            {activeTab === 'siswa' && (() => {
+            <div className={`${activeTab === 'siswa' ? 'block' : 'hidden'} print:block print:break-before-page`}>
+            {(() => {
               const remedial = analysisResult.studentData.filter((s: any) => s.status !== 'Tuntas')
               const pengayaan = analysisResult.studentData.filter((s: any) => s.status === 'Tuntas')
+              
+              // Soal yang perlu re-teaching: P < 0.3 (Sukar) ATAU validitas rendah DAN keputusan bukan "Dipakai"
+              const soalReteaching = analysisResult.analyzedData.filter((item: any) =>
+                item.pCat === 'Sukar' || (item.valStatus !== 'Valid' && item.decision !== 'Dipakai')
+              )
+              // Soal pengecoh bermasalah: ada pengecoh yang tidak efektif (pilihan ganda)
+              const soalPengecohBuruk = analysisResult.analyzedData.filter((item: any) => {
+                if (!item.distractorData) return false
+                return Object.values(item.distractorData).some((d: any) => !d.isKey && !d.isEffective && d.count === 0)
+              })
+
               return (
                 <div className="space-y-4">
                   {/* Header info */}
@@ -524,9 +737,130 @@ export default function NewAnalysisPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Panel Perbaikan Pembelajaran (Re-teaching) ── */}
+                  {soalReteaching.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/40 overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-amber-200">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"/>
+                          <span className="font-bold text-amber-800 text-sm">Perbaikan Pembelajaran (Re-teaching)</span>
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full">
+                          {soalReteaching.length} Indikator
+                        </span>
+                      </div>
+                      <div className="px-5 py-3 border-b border-amber-100 bg-amber-50/60">
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          <span className="font-semibold">Rekomendasi:</span> Materi pada butir soal di bawah ini belum dipahami oleh mayoritas kelas (tingkat kesukaran tinggi / validitas rendah). Guru disarankan melakukan <em>re-teaching</em> atau pengulangan materi sebelum evaluasi berikutnya.
+                        </p>
+                      </div>
+                      <div className="divide-y divide-amber-100">
+                        {soalReteaching.map((item: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-amber-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                {item.id}
+                              </span>
+                              <div>
+                                <span className="text-sm font-medium text-slate-800">Soal No. {item.id}</span>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.pCat === 'Sukar' ? 'bg-rose-100 text-rose-700' : item.pCat === 'Sedang' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                    {item.pCat} (P={item.p.toFixed(2)})
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.valStatus === 'Valid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                    {item.valStatus}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.decision === 'Dipakai' ? 'bg-blue-100 text-blue-700' : item.decision === 'Revisi' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'}`}>
+                                    → {item.decision}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-xs text-slate-500">Daya Beda</div>
+                              <div className={`text-sm font-bold ${item.d < 0.2 ? 'text-rose-600' : item.d < 0.3 ? 'text-amber-600' : 'text-emerald-600'}`}>{item.d.toFixed(2)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-5 py-2 bg-amber-100/50 border-t border-amber-200">
+                        <p className="text-xs text-amber-700 font-semibold">
+                          {soalReteaching.length} butir soal perlu ditindaklanjuti dalam pembelajaran
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Panel Pengecoh Tidak Berfungsi ── */}
+                  {soalPengecohBuruk.length > 0 && (
+                    <div className="rounded-2xl border border-purple-200 bg-purple-50/30 overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-purple-200">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"/>
+                          <span className="font-bold text-purple-800 text-sm">Pengecoh Tidak Berfungsi (Revisi Soal)</span>
+                        </div>
+                        <span className="text-[11px] font-bold text-purple-700 bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-full">
+                          {soalPengecohBuruk.length} Soal
+                        </span>
+                      </div>
+                      <div className="px-5 py-3 border-b border-purple-100 bg-purple-50/60">
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          <span className="font-semibold">Rekomendasi:</span> Pilihan jawaban (pengecoh) pada soal-soal berikut tidak ada yang memilih sama sekali (0%). Soal perlu direvisi agar seluruh opsi berfungsi sebagai pengganggu yang efektif.
+                        </p>
+                      </div>
+                      <div className="divide-y divide-purple-100">
+                        {soalPengecohBuruk.map((item: any, i: number) => {
+                          const tidakEfektif = Object.entries(item.distractorData).filter(([, d]: any) => !d.isKey && d.count === 0).map(([opt]) => opt)
+                          return (
+                            <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-purple-50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold text-purple-700 bg-purple-100 border border-purple-200 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                  {item.id}
+                                </span>
+                                <div>
+                                  <span className="text-sm font-medium text-slate-800">Soal No. {item.id}</span>
+                                  <div className="text-xs text-purple-600 mt-0.5">
+                                    Opsi tidak dipilih: <span className="font-bold">{tidakEfektif.join(', ')}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {soalReteaching.length === 0 && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 text-center">
+                      <p className="text-sm font-semibold text-emerald-700">✅ Seluruh materi berhasil dipahami dengan baik oleh mayoritas siswa. Tidak ada indikator yang memerlukan re-teaching khusus.</p>
+                    </div>
+                  )}
                 </div>
               )
             })()}
+            
+            
+            {/* Lembar Pengesahan (Hanya muncul saat di-print) */}
+            <div className="hidden print:flex justify-between mt-20 pt-8 print:break-inside-avoid text-black text-sm">
+              <div className="text-center w-64">
+                <p>Mengetahui,</p>
+                <p className="font-bold">Kepala Sekolah</p>
+                <div className="h-24"></div>
+                <p className="font-bold underline">{identity.kepalaSekolah || '...........................................'}</p>
+                <p>NIP. {identity.nipKepalaSekolah || '...........................................'}</p>
+              </div>
+              <div className="text-center w-64">
+                <p>..................................., 20....</p>
+                <p className="font-bold">Guru Mata Pelajaran</p>
+                <div className="h-24"></div>
+                <p className="font-bold underline">{identity.guru || '...........................................'}</p>
+                <p>NIP. {identity.nip || '...........................................'}</p>
+              </div>
+            </div>
+
+            </div>
 
             <button onClick={() => setAnalysisResult(null)} className="text-blue-600 font-semibold text-sm hover:underline print:hidden">
               Ulangi Analisis
@@ -561,7 +895,7 @@ export default function NewAnalysisPage() {
 
       {/* Guide Modal Keren */}
       {showGuide && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
             {/* Header Modal */}
@@ -685,7 +1019,7 @@ export default function NewAnalysisPage() {
                       <span className="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-sm">4</span> 
                       Reliabilitas Tes
                     </h3>
-                    <p className="text-sm text-slate-600 mb-4">Menunjukkan tingkat konsistensi seluruh soal dalam satu tes (Cronbach's Alpha).</p>
+                    <p className="text-sm text-slate-600 mb-4">Menunjukkan tingkat konsistensi seluruh soal dalam satu tes (Cronbach&apos;s Alpha).</p>
                     <div className="overflow-hidden rounded-xl border border-slate-200">
                       <table className="w-full text-sm text-left text-slate-600">
                         <thead className="text-xs text-slate-700 uppercase bg-slate-100">

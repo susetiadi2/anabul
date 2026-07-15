@@ -122,8 +122,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
       {/* ─── Row 1: Ketuntasan + Kualitas Soal ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Ketuntasan Belajar" subtitle={`KKTP ${kkm} — Total ${total} siswa`}>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
+          <div className="flex items-center justify-center w-full" style={{height: 220}}>
+            <PieChart width={320} height={220}>
               <Pie
                 data={ketuntasanData}
                 cx="50%"
@@ -142,7 +142,7 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
               <Tooltip content={<CustomTooltip />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
-          </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         <ChartCard title="Kualitas Soal" subtitle="Rekapitulasi keputusan per butir">

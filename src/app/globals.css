@@ -24,3 +24,77 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 20mm 20mm 20mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Paksa SVG dan elemen Recharts selalu terlihat */
+  svg, .recharts-wrapper, .recharts-surface {
+    overflow: visible !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Pastikan ResponsiveContainer punya tinggi yang terdefinisi */
+  .recharts-responsive-container {
+    width: 100% !important;
+    height: 220px !important;
+  }
+
+  /* Sembunyikan elemen interaktif */
+  .recharts-tooltip-wrapper {
+    display: none !important;
+  }
+
+  /* Stabilkan layout saat print */
+  .print\:break-before-page {
+    break-before: page;
+  }
+
+  /* ─── Halaman Sebaran: Landscape A4 ─── */
+  @page sebaran-landscape {
+    size: A4 landscape;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  .sebaran-print-section {
+    page: sebaran-landscape;
+    break-before: page;
+  }
+
+  /* Pastikan tabel Sebaran memenuhi lebar landscape */
+  .sebaran-print-section table {
+    font-size: 8px !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .sebaran-print-section th,
+  .sebaran-print-section td {
+    border: 1px solid #000 !important;
+    padding: 2px 3px !important;
+    position: static !important;
+    box-shadow: none !important;
+    white-space: nowrap;
+  }
+
+  .sebaran-print-section thead th {
+    background-color: #e2e8f0 !important;
+    font-weight: bold !important;
+  }
+
+  .sebaran-print-section .bg-blue-50,
+  .sebaran-print-section .bg-blue-50\/80 {
+    background-color: #dbeafe !important;
+  }
+}
