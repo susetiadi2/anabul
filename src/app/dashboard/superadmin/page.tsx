@@ -670,7 +670,6 @@ export default function SuperadminDashboard() {
             )}
           </div>
         )}
-        )}
 
         {/* ─── MODAL EDIT PENGGUNA ─── */}
         {editingUser && (
