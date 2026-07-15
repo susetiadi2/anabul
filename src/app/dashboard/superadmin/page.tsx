@@ -71,12 +71,18 @@ export default function SuperadminDashboard() {
 
   useEffect(() => {
     // Guard: pastikan yang akses adalah superadmin
-    supabase.from('user_profiles').select('role').single().then(({ data }) => {
-      if (!data || data.role !== 'superadmin') {
+    supabase.auth.getUser().then(({ data: authData }) => {
+      if (!authData.user) {
         router.replace('/login')
-      } else {
-        fetchAll()
+        return
       }
+      supabase.from('user_profiles').select('role').eq('id', authData.user.id).single().then(({ data }) => {
+        if (!data || data.role !== 'superadmin') {
+          router.replace('/login')
+        } else {
+          fetchAll()
+        }
+      })
     })
   }, [fetchAll, router, supabase])
 

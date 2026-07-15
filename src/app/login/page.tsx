@@ -93,16 +93,18 @@ export default function LoginPage() {
     if (!nip || !password) { setError('NIP dan Password wajib diisi.'); return }
     setLoading(true); setError(null)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: nipToEmail(nip),
         password,
       })
       if (error) throw error
+      if (!data.user) throw new Error('User tidak ditemukan')
 
       // Ambil profil untuk tahu role-nya
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('role')
+        .eq('id', data.user.id)
         .single()
 
       const redirectMap: Record<string, string> = {
