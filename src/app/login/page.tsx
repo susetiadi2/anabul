@@ -39,20 +39,23 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [checkingLicense, setCheckingLicense] = useState(false)
   const [licenseSchoolLocked, setLicenseSchoolLocked] = useState(false)
+  const [licenseValid, setLicenseValid] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    // Reset saat mode bukan register atau role superadmin/pengawas (pengawas ketik manual)
-    if (mode !== 'register' || role === 'superadmin' || role === 'pengawas') {
+    // Reset saat mode bukan register atau role superadmin
+    if (mode !== 'register' || role === 'superadmin') {
       setLicenseSchoolLocked(false)
+      setLicenseValid(false)
       setSchoolName('')
       return
     }
     // Belum cukup panjang, reset tapi jangan fetch
     if (!licenseCode || licenseCode.trim().length < 5) {
       setLicenseSchoolLocked(false)
+      setLicenseValid(false)
       setSchoolName('')
       return
     }
@@ -67,15 +70,24 @@ export default function LoginPage() {
         .single()
 
       setCheckingLicense(false)
-      const schoolsData: any = data?.schools
-      const fetched = Array.isArray(schoolsData) ? schoolsData[0]?.name : schoolsData?.name
-
-      if (fetched) {
-        setSchoolName(fetched)
-        setLicenseSchoolLocked(true)
+      
+      // Jika license ada, maka kode lisensi valid
+      if (data) {
+        setLicenseValid(true)
+        const schoolsData: any = data?.schools
+        const fetched = Array.isArray(schoolsData) ? schoolsData[0]?.name : schoolsData?.name
+        
+        if (fetched) {
+          setSchoolName(fetched)
+          setLicenseSchoolLocked(true)
+        } else {
+          setSchoolName('')
+          setLicenseSchoolLocked(false)
+        }
       } else {
-        setSchoolName('')
+        setLicenseValid(false)
         setLicenseSchoolLocked(false)
+        setSchoolName('')
       }
     }, 700)
 
@@ -283,6 +295,7 @@ export default function LoginPage() {
                         onChange={(e) => {
                           setLicenseCode(e.target.value.toUpperCase())
                           setLicenseSchoolLocked(false)
+                          setLicenseValid(false)
                           setSchoolName('')
                         }}
                         className="w-full bg-white border border-amber-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 pr-10 text-sm font-mono tracking-widest focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all"
@@ -292,20 +305,28 @@ export default function LoginPage() {
                           <RefreshCw className="w-4 h-4 animate-spin" />
                         </div>
                       )}
-                      {licenseSchoolLocked && !checkingLicense && (
+                      {licenseValid && !checkingLicense && (
                         <div className="absolute right-3 top-3.5 text-emerald-500">
                           <CheckCircle className="w-4 h-4" />
                         </div>
                       )}
                     </div>
                     {/* Pesan status lisensi */}
-                    {licenseSchoolLocked && (
+                    {licenseValid && role === 'pengawas' && (
+                      <p className="text-emerald-600 text-xs mt-2 font-bold flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Kode lisensi pengawas valid!
+                      </p>
+                    )}
+                    {licenseSchoolLocked && role !== 'pengawas' && (
                       <p className="text-emerald-600 text-xs mt-2 font-bold flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" /> Kode valid — Sekolah berhasil ditemukan!
                       </p>
                     )}
-                    {!checkingLicense && !licenseSchoolLocked && licenseCode.trim().length >= 5 && (
+                    {!checkingLicense && !licenseValid && licenseCode.trim().length >= 5 && (
                       <p className="text-red-500 text-xs mt-2 font-semibold">⚠️ Kode tidak ditemukan atau tidak aktif.</p>
+                    )}
+                    {licenseValid && !licenseSchoolLocked && role !== 'pengawas' && (
+                      <p className="text-red-500 text-xs mt-2 font-semibold">⚠️ Lisensi ini tidak terhubung ke sekolah mana pun.</p>
                     )}
                     {!licenseCode && (
                       <p className="text-amber-700/70 text-xs mt-2">Kode lisensi diberikan oleh Administrator AnasolApp.</p>
