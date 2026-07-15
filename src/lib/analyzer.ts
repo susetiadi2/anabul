@@ -104,16 +104,44 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         throw new Error("Data siswa kosong setelah proses pembersihan data.");
     }
 
+    // Deteksi jumlah opsi pilihan ganda secara dinamis (Cari abjad tertinggi dari kunci jawaban & jawaban siswa)
+    let maxOptionAscii = 'C'.charCodeAt(0); // Minimal 3 opsi (A, B, C)
+    questionCols.forEach(q => {
+        if (examType === 'pg_huruf' || (examType === 'campuran' && kunciJawaban[q] && kunciJawaban[q] !== 'B' && kunciJawaban[q] !== 'S')) {
+            const keyStr = String(kunciJawaban[q] || "").trim().toUpperCase();
+            keyStr.split(',').forEach(ans => {
+                if (['A','B','C','D','E'].includes(ans)) {
+                    maxOptionAscii = Math.max(maxOptionAscii, ans.charCodeAt(0));
+                }
+            });
+            studentRows.forEach(row => {
+                let ans = String(row[q] || "").trim().toUpperCase();
+                if (ans === 'A.' || ans === 'A)') ans = 'A';
+                if (['A','B','C','D','E'].includes(ans)) {
+                    maxOptionAscii = Math.max(maxOptionAscii, ans.charCodeAt(0));
+                }
+            });
+        }
+    });
+    const maxOptionChar = String.fromCharCode(maxOptionAscii);
+    const dynamicOpts = ['A', 'B', 'C', 'D', 'E'].filter(opt => opt <= maxOptionChar);
+
     let distractorData: Record<string, any> = {};
     if (examType === 'pg_huruf') {
-        questionCols.forEach(q => { distractorData[q] = { A:0, B:0, C:0, D:0, E:0, Kosong:0 }; });
+        questionCols.forEach(q => { 
+            distractorData[q] = { Kosong:0 }; 
+            dynamicOpts.forEach(opt => distractorData[q][opt] = 0);
+        });
     } else if (examType === 'bs') {
         questionCols.forEach(q => { distractorData[q] = { B:0, S:0, Kosong:0 }; });
     } else if (examType === 'campuran') {
         questionCols.forEach(q => { 
             if (kunciJawaban[q]) {
                 if (kunciJawaban[q] === 'B' || kunciJawaban[q] === 'S') distractorData[q] = { B:0, S:0, Kosong:0 }; 
-                else distractorData[q] = { A:0, B:0, C:0, D:0, E:0, Kosong:0 };
+                else {
+                    distractorData[q] = { Kosong:0 };
+                    dynamicOpts.forEach(opt => distractorData[q][opt] = 0);
+                }
             }
         });
     }
@@ -186,7 +214,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         if (examType === 'pg_huruf' || examType === 'bs' || (examType === 'campuran' && kunciJawaban[q])) {
             const totalN = students.length;
             distractorObj = {};
-            const opts = (examType === 'pg_huruf' || (examType === 'campuran' && distractorData[q] && distractorData[q]['A'] !== undefined)) ? ['A','B','C','D','E'] : ['B','S'];
+            const opts = (examType === 'pg_huruf' || (examType === 'campuran' && distractorData[q] && distractorData[q]['A'] !== undefined)) ? dynamicOpts : ['B','S'];
             opts.forEach(opt => {
                 const count = distractorData[q] ? distractorData[q][opt] : 0;
                 const pct = Math.round((count / totalN) * 100);

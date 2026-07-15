@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save } from 'lucide-react'
 
-type School = { id: string; name: string; address: string | null; level: string | null; is_active: boolean; created_at: string }
+type School = { id: string; name: string; address: string | null; level: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
 type License = { id: string; code: string; description: string | null; is_active: boolean; school_id: string | null; created_at: string; schools?: { name: string } | null }
 type UserProfile = { id: string; nip: string; name: string; school_name: string; role: string; created_at: string }
 
@@ -31,6 +31,8 @@ export default function SuperadminDashboard() {
   const [newSchoolName, setNewSchoolName] = useState('')
   const [newSchoolAddress, setNewSchoolAddress] = useState('')
   const [newSchoolLevel, setNewSchoolLevel] = useState('SMA')
+  const [newHeadmasterName, setNewHeadmasterName] = useState('')
+  const [newHeadmasterNip, setNewHeadmasterNip] = useState('')
 
   // Form tambah lisensi
   const [newLicenseCode, setNewLicenseCode] = useState('')
@@ -84,10 +86,12 @@ export default function SuperadminDashboard() {
       name: newSchoolName.trim(),
       address: newSchoolAddress.trim() || null,
       level: newSchoolLevel,
+      headmaster_name: newHeadmasterName.trim() || null,
+      headmaster_nip: newHeadmasterNip.trim() || null,
     })
     if (error) return showMsg('error', error.message)
     showMsg('success', `Sekolah "${newSchoolName}" berhasil ditambahkan!`)
-    setNewSchoolName(''); setNewSchoolAddress('')
+    setNewSchoolName(''); setNewSchoolAddress(''); setNewHeadmasterName(''); setNewHeadmasterNip('');
     fetchAll()
   }
 
@@ -261,6 +265,14 @@ export default function SuperadminDashboard() {
                     {['SD', 'SMP', 'SMA', 'SMK'].map(l => <option key={l}>{l}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Nama Kepala Sekolah</label>
+                  <input value={newHeadmasterName} onChange={e => setNewHeadmasterName(e.target.value)} placeholder="Nama Lengkap & Gelar" className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">NIP Kepala Sekolah</label>
+                  <input value={newHeadmasterNip} onChange={e => setNewHeadmasterNip(e.target.value)} placeholder="NIP (Kosongkan jika tidak ada)" className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                </div>
                 <button onClick={addSchool} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 mt-2">
                   + Daftarkan Sekolah
                 </button>
@@ -282,6 +294,9 @@ export default function SuperadminDashboard() {
                     <div>
                       <div className="font-bold text-slate-900 text-base">{school.name}</div>
                       <div className="text-sm text-slate-500 mt-0.5">{school.address ?? 'Alamat belum diisi'}</div>
+                      {(school.headmaster_name || school.headmaster_nip) && (
+                        <div className="text-xs text-slate-400 mt-1 font-medium">Kepsek: {school.headmaster_name || '-'} {school.headmaster_nip ? `(${school.headmaster_nip})` : ''}</div>
+                      )}
                     </div>
                   </div>
                   <button onClick={() => toggleSchool(school.id, school.is_active)} className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all border ${school.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-red-50 hover:border-red-200 hover:text-red-700' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'}`}>

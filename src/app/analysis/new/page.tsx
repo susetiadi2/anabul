@@ -21,12 +21,16 @@ export default function NewAnalysisPage() {
   const [activeTab, setActiveTab] = useState('ringkasan')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
-  const [isViewMode] = useState(() => {
+
+  // Baca viewId langsung dari URL saat pertama kali render (lazy initializer)
+  const [viewId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).has('viewId');
+      return new URLSearchParams(window.location.search).get('viewId');
     }
-    return false;
+    return null;
   })
+  const isViewMode = !!viewId;
+
   const today = new Date().toISOString().split('T')[0];
   const [identity, setIdentity] = useState({ 
     mataPelajaran: 'Pendidikan Agama dan Budi Pekerti', mataPelajaranLain: '', 
@@ -41,44 +45,59 @@ export default function NewAnalysisPage() {
   const supabase = createClient()
   const router = useRouter()
 
+  // Fetch profil guru dari Supabase
   useEffect(() => {
     async function fetchProfile() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single()
         if (profile) {
+          let headmasterName = '';
+          let headmasterNip = '';
+          if (profile.school_name) {
+            const { data: school } = await supabase.from('schools').select('headmaster_name, headmaster_nip').eq('name', profile.school_name).maybeSingle()
+            if (school) {
+              headmasterName = school.headmaster_name || '';
+              headmasterNip = school.headmaster_nip || '';
+            }
+          }
+          
           setIdentity(prev => ({
             ...prev,
             guru: profile.name || '',
             nip: profile.nip || '',
-            sekolah: profile.school_name || ''
+            sekolah: profile.school_name || '',
+            kepalaSekolah: headmasterName,
+            nipKepalaSekolah: headmasterNip
           }))
         }
       }
     }
     fetchProfile()
-
-    // Cek parameter viewId di URL untuk fitur Viewer
-    const params = new URLSearchParams(window.location.search);
-    const vId = params.get('viewId');
-    if (vId) {
-      const loadFromIdb = async () => {
-        try {
-          const data = await idbGet(`analysis_${vId}`);
-          if (data) {
-            setAnalysisResult(data);
-            setActiveTab('ringkasan');
-          } else {
-            setError("Data laporan lengkap tidak ditemukan di perangkat ini. Data detail masif hanya tersimpan secara permanen di perangkat lokal (laptop/browser) saat analisis pertama kali dibuat.");
-          }
-        } catch (err) {
-          console.error(err);
-          setError("Gagal memuat data dari penyimpanan lokal.");
-        }
-      }
-      loadFromIdb();
-    }
   }, [supabase])
+
+  // Load data dari IndexedDB jika ada viewId (mode Viewer)
+  useEffect(() => {
+    if (!viewId) return;
+    const loadFromIdb = async () => {
+      try {
+        const data = await idbGet(`analysis_${viewId}`);
+        if (data) {
+          setAnalysisResult(data);
+          if (data.identity) {
+            setIdentity(prev => ({ ...prev, ...data.identity }));
+          }
+          setActiveTab('ringkasan');
+        } else {
+          setError("Data laporan lengkap tidak ditemukan di perangkat ini. Data detail masif hanya tersimpan secara permanen di perangkat lokal (laptop/browser) saat analisis pertama kali dibuat.");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Gagal memuat data dari penyimpanan lokal.");
+      }
+    }
+    loadFromIdb();
+  }, [viewId])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -124,7 +143,8 @@ export default function NewAnalysisPage() {
             throw new Error('Data tidak ditemukan di dalam file.'); 
         }
 
-        const result = analyzeData(jsonData, examType, Number(kkm) || 75)
+        const result = analyzeData(jsonData, examType, Number(kkm) || 75) as any
+        result.identity = identity // Inject identity into result to save it later
         setAnalysisResult(result)
         setIsProcessing(false)
       } catch (err: unknown) { 
@@ -277,6 +297,22 @@ export default function NewAnalysisPage() {
         </div>
 
         {!analysisResult ? (
+          isViewMode ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
+              {error ? (
+                <div className="text-rose-600">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-bold">{error}</p>
+                  <Link href="/" className="mt-4 inline-block px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 font-semibold transition-colors">Kembali ke Dashboard</Link>
+                </div>
+              ) : (
+                <div className="text-slate-500 animate-pulse">
+                  <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                  <p className="font-semibold text-lg">Memuat arsip laporan...</p>
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
             <div className="mb-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
               <h3 className="font-bold text-slate-800 mb-4">Identitas Laporan (Untuk Cetak)</h3>
@@ -410,6 +446,7 @@ export default function NewAnalysisPage() {
               {isProcessing ? 'Memproses...' : 'Mulai Analisis'}
             </button>
           </div>
+          )
         ) : (
           <div className="space-y-6">
             {/* Kop Surat (Tampil di Print dan Layar) */}

@@ -59,13 +59,13 @@ export default async function DashboardPage() {
   else if (hour >= 18 || hour < 4) greeting = 'Selamat Malam'
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-x-hidden">
       {/* Background Ornaments for Glassmorphism */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px] pointer-events-none"></div>
       
-      <nav className="bg-white/70 backdrop-blur-xl border-b border-white/40 px-6 py-4 sticky top-0 z-40 shadow-sm">
-        <div className="flex justify-between items-center w-full max-w-[98%] mx-auto">
+      <nav className="bg-white/70 backdrop-blur-xl border-b border-white/40 px-4 sm:px-6 py-4 sticky top-0 z-40 shadow-sm">
+        <div className="flex justify-between items-center w-full max-w-screen-2xl mx-auto">
           <div className="flex items-center gap-3">
             <img src="https://iili.io/CMHn0Cv.png" alt="Logo AnasolApp" className="w-10 h-10 object-contain rounded-xl" />
             <div>
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      <main className="w-full max-w-[98%] mx-auto p-4 sm:p-6 md:p-8 relative z-10">
+      <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8 relative z-10">
         
         {/* Greetings & Actions */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-4">
