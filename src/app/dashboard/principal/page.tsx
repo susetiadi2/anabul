@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Users, RefreshCw, LogOut, GraduationCap, Building, Activity, FileText, CheckCircle, AlertTriangle, XCircle, Search, Filter, BookOpen, Star, TrendingUp, ChevronRight, BarChart2 } from 'lucide-react'
+import { Users, RefreshCw, LogOut, GraduationCap, Building, Activity, FileText, CheckCircle, AlertTriangle, XCircle, Search, Filter, BookOpen, Star, TrendingUp, ChevronRight, BarChart2, Award } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 
 type UserProfile = { id: string; nip: string; name: string; school_name: string; role: string; cluster_name: string | null }
