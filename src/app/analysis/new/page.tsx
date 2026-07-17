@@ -298,7 +298,7 @@ function AnalysisContent() {
         
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 print:hidden">
           <h1 className="text-2xl font-bold">
-            {isViewMode ? 'Arsip Hasil Analisis' : (analysisResult ? 'Hasil Analisis Butir Soal' : 'Buat Analisis Baru')}
+            {(isViewMode || analysisResult) ? 'Laporan Analisis Butir Soal' : 'Buat Analisis Baru'}
           </h1>
           <div className="flex items-center gap-2">
             {analysisResult && (
