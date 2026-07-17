@@ -234,8 +234,8 @@ export default function SuperadminDashboard() {
 
   const openEditUser = (u: UserProfile) => {
     setEditingUser(u)
-    setEditUserName(u.name)
-    setEditUserNip(u.nip)
+    setEditUserName(u.name || '')
+    setEditUserNip(u.nip || '')
   }
 
   const saveEditUser = async () => {
@@ -243,7 +243,7 @@ export default function SuperadminDashboard() {
     if (!editUserName.trim() || !editUserNip.trim()) return showMsg('error', 'Nama dan NIP wajib diisi.')
     const { error } = await supabase.from('user_profiles').update({
       name: editUserName.trim(),
-      nip: editUserNip.trim()
+      nip: editUserNip.trim() || null
     }).eq('id', editingUser.id)
     if (error) return showMsg('error', error.message)
     showMsg('success', 'Data pengguna berhasil diperbarui!')
