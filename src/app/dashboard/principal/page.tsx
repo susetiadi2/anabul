@@ -8,84 +8,118 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 
 type UserProfile = { id: string; nip: string; name: string; school_name: string; role: string; cluster_name: string | null }
 
-// --- MOCK DATA ---
-const MOCK_STATS = {
-  totalGuru: 42,
-  totalMapel: 15,
-  analisisSelesai: 124,
-  paketSoal: 38,
-  soalDianalisis: 1520,
-  layak: 75,
-  revisi: 15,
-  ditolak: 10
-}
-
-const MOCK_MONITORING = [
-  { id: 1, guru: 'Ahmad, S.Pd', mapel: 'Matematika', kelas: 'VIII', semester: 'Ganjil', status: 'Selesai' },
-  { id: 2, guru: 'Budi, M.Pd', mapel: 'IPA', kelas: 'IX', semester: 'Ganjil', status: 'Selesai' },
-  { id: 3, guru: 'Siti, S.Pd', mapel: 'Bahasa Indonesia', kelas: 'VII', semester: 'Ganjil', status: 'Proses' },
-  { id: 4, guru: 'Ani, S.Pd', mapel: 'IPS', kelas: 'VIII', semester: 'Ganjil', status: 'Belum Mulai' },
-  { id: 5, guru: 'Bambang, S.Kom', mapel: 'Informatika', kelas: 'VII', semester: 'Ganjil', status: 'Selesai' },
-]
-
-const MOCK_KUALITAS_KESUKARAN = [
-  { name: 'Mudah', value: 30, color: '#10b981' },
-  { name: 'Sedang', value: 50, color: '#3b82f6' },
-  { name: 'Sulit', value: 20, color: '#f59e0b' },
-]
-
-const MOCK_KUALITAS_BEDA = [
-  { name: 'Sangat Baik', value: 40 },
-  { name: 'Baik', value: 35 },
-  { name: 'Cukup', value: 15 },
-  { name: 'Jelek', value: 10 },
-]
-
-const MOCK_RANKING_MAPEL = [
-  { mapel: 'IPA', nilai: 92 },
-  { mapel: 'IPS', nilai: 89 },
-  { mapel: 'Matematika', nilai: 84 },
-  { mapel: 'Bahasa Indonesia', nilai: 82 },
-  { mapel: 'Bahasa Inggris', nilai: 78 },
-]
-
-const MOCK_RANKING_GURU = [
-  { guru: 'Ahmad, S.Pd', mapel: 'Matematika', nilai: 94 },
-  { guru: 'Budi, M.Pd', mapel: 'IPA', nilai: 92 },
-  { guru: 'Ani, S.Pd', mapel: 'IPS', nilai: 88 },
-  { guru: 'Siti, S.Pd', mapel: 'Bahasa Indonesia', nilai: 81 },
-]
-
-const MOCK_BERMASALAH = [
-  { id: 1, mapel: 'Matematika', kelas: 'VIII', soalNo: 4, masalah: 'Daya pembeda negatif', tingkat: 'Tinggi' },
-  { id: 2, mapel: 'IPA', kelas: 'IX', soalNo: 12, masalah: 'Distraktor tidak berfungsi (Opsi C)', tingkat: 'Sedang' },
-  { id: 3, mapel: 'Bahasa Indonesia', kelas: 'VII', soalNo: 25, masalah: 'Validitas rendah', tingkat: 'Tinggi' },
-  { id: 4, mapel: 'IPS', kelas: 'VIII', soalNo: 1, masalah: 'Soal terlalu mudah (P=0.95)', tingkat: 'Rendah' },
-  { id: 5, mapel: 'Informatika', kelas: 'VII', soalNo: 40, masalah: 'Soal terlalu sulit (P=0.10)', tingkat: 'Sedang' },
-]
-
-const MOCK_BANK_SOAL = [
-  { id: 1, mapel: 'Matematika', kelas: 'VIII', materi: 'Aljabar', tipe: 'Pilihan Ganda', guru: 'Ahmad, S.Pd', kesukaran: 'Sedang' },
-  { id: 2, mapel: 'IPA', kelas: 'IX', materi: 'Sistem Reproduksi', tipe: 'Pilihan Ganda', guru: 'Budi, M.Pd', kesukaran: 'Mudah' },
-  { id: 3, mapel: 'IPA', kelas: 'IX', materi: 'Pewarisan Sifat', tipe: 'Uraian', guru: 'Budi, M.Pd', kesukaran: 'Sulit' },
-  { id: 4, mapel: 'Bahasa Indonesia', kelas: 'VII', materi: 'Teks Deskripsi', tipe: 'Pilihan Ganda', guru: 'Siti, S.Pd', kesukaran: 'Sedang' },
-]
-// -----------------
-
 export default function PrincipalDashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('ringkasan')
+
+  // Data Nyata dari Supabase
+  const [stats, setStats] = useState({
+    totalGuru: 0,
+    totalMapel: 0,
+    analisisSelesai: 0,
+    paketSoal: 0,
+    soalDianalisis: 0,
+    layak: 0,
+    revisi: 0,
+    ditolak: 0
+  })
+  const [monitoringGuru, setMonitoringGuru] = useState<any[]>([])
+  const [kualitasKesukaran, setKualitasKesukaran] = useState<any[]>([])
+  const [kualitasBeda, setKualitasBeda] = useState<any[]>([
+    { name: 'Sangat Baik', value: 0 },
+    { name: 'Baik', value: 0 },
+    { name: 'Cukup', value: 0 },
+    { name: 'Jelek', value: 0 }
+  ])
+  const [rankingMapel, setRankingMapel] = useState<any[]>([])
+  const [rankingGuru, setRankingGuru] = useState<any[]>([])
+  const [bermasalah, setBermasalah] = useState<any[]>([])
+  const [bankSoal, setBankSoal] = useState<any[]>([])
 
   const supabase = createClient()
   const router = useRouter()
 
   const fetchDashboardData = useCallback(async (userProfile: UserProfile) => {
     setLoading(true)
-    // Dalam implementasi nyata, di sini akan ada pengambilan data dari DB
-    // Untuk saat ini kita gunakan Mock Data yang sudah didefinisikan di atas
-    setTimeout(() => setLoading(false), 800)
-  }, [])
+    try {
+      // 1. Ambil data guru di sekolah ini
+      const { data: teachers } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('school_name', userProfile.school_name)
+        .eq('role', 'guru')
+
+      const guruList = teachers || []
+
+      // 2. Ambil data analisis di sekolah ini
+      const { data: sessions } = await supabase
+        .from('analysis_sessions')
+        .select('*')
+        .eq('school_name', userProfile.school_name)
+      
+      const sessionList = sessions || []
+
+      // 3. Agregasi Data
+      let totalSoalDianalisis = 0
+      let totalValid = 0
+      let totalSukar = 0
+      let totalRevisi = 0
+
+      sessionList.forEach(session => {
+        const meta = session.data_payload?.metadata
+        if (meta) {
+          totalSoalDianalisis += (meta.totalSoal || 0)
+          totalValid += (meta.soalValid || 0)
+          totalSukar += (meta.soalSukar || 0)
+          totalRevisi += (meta.soalRevisi || 0)
+        }
+      })
+
+      const persentaseLayak = totalSoalDianalisis > 0 ? Math.round((totalValid / totalSoalDianalisis) * 100) : 0
+      const persentaseRevisi = totalSoalDianalisis > 0 ? Math.round((totalRevisi / totalSoalDianalisis) * 100) : 0
+      const persentaseDitolak = totalSoalDianalisis > 0 ? Math.round((totalSukar / totalSoalDianalisis) * 100) : 0
+
+      setStats({
+        totalGuru: guruList.length,
+        totalMapel: 0, 
+        analisisSelesai: sessionList.length,
+        paketSoal: sessionList.length,
+        soalDianalisis: totalSoalDianalisis,
+        layak: persentaseLayak,
+        revisi: persentaseRevisi,
+        ditolak: persentaseDitolak
+      })
+
+      // Monitoring Guru
+      const monitoring = guruList.map(guru => {
+        const guruSessions = sessionList.filter(s => s.user_id === guru.id)
+        return {
+          id: guru.id,
+          guru: guru.name,
+          mapel: '-',
+          kelas: '-', 
+          semester: '-',
+          status: guruSessions.length > 0 ? 'Selesai' : 'Belum Mulai'
+        }
+      })
+      setMonitoringGuru(monitoring)
+
+      // Dummy Kesukaran Berdasarkan Agregat
+      const mudah = Math.max(0, totalSoalDianalisis - totalSukar - (totalSoalDianalisis * 0.4))
+      const sedang = Math.max(0, totalSoalDianalisis * 0.4)
+      setKualitasKesukaran([
+        { name: 'Mudah', value: totalSoalDianalisis > 0 ? mudah : 1, color: '#10b981' },
+        { name: 'Sedang', value: totalSoalDianalisis > 0 ? sedang : 1, color: '#3b82f6' },
+        { name: 'Sulit', value: totalSoalDianalisis > 0 ? totalSukar : 1, color: '#f59e0b' },
+      ])
+
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: authData }) => {
@@ -188,22 +222,22 @@ export default function PrincipalDashboard() {
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><Users className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Guru Terdaftar</div>
-                <div className="text-4xl font-black text-slate-800">{MOCK_STATS.totalGuru}</div>
+                <div className="text-4xl font-black text-slate-800">{stats.totalGuru}</div>
               </div>
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><BookOpen className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Mata Pelajaran</div>
-                <div className="text-4xl font-black text-slate-800">{MOCK_STATS.totalMapel}</div>
+                <div className="text-4xl font-black text-slate-800">{stats.totalMapel}</div>
               </div>
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><FileText className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Paket Soal</div>
-                <div className="text-4xl font-black text-slate-800">{MOCK_STATS.paketSoal}</div>
+                <div className="text-4xl font-black text-slate-800">{stats.paketSoal}</div>
               </div>
               <div className="bg-gradient-to-br from-emerald-500 to-teal-600 border border-transparent rounded-3xl p-6 shadow-lg shadow-emerald-500/20 relative overflow-hidden group text-white">
                 <div className="absolute right-[-10px] top-[-10px] opacity-10 group-hover:scale-110 transition-transform"><Activity className="w-32 h-32" /></div>
                 <div className="text-emerald-100 font-bold text-sm uppercase tracking-wide mb-2">Soal Dianalisis</div>
-                <div className="text-4xl font-black">{MOCK_STATS.soalDianalisis.toLocaleString()}</div>
+                <div className="text-4xl font-black">{stats.soalDianalisis.toLocaleString()}</div>
               </div>
             </div>
 
@@ -211,20 +245,20 @@ export default function PrincipalDashboard() {
             <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm flex flex-col md:flex-row gap-8 items-center">
               <div className="w-full md:w-1/3">
                 <h3 className="text-xl font-black text-slate-800 mb-2">Kelayakan Soal Sekolah</h3>
-                <p className="text-slate-500 text-sm mb-6">Distribusi persentase kualitas dari total {MOCK_STATS.soalDianalisis} butir soal yang telah dikerjakan oleh guru.</p>
+                <p className="text-slate-500 text-sm mb-6">Distribusi persentase kualitas dari total {stats.soalDianalisis} butir soal yang telah dikerjakan oleh guru.</p>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> <span className="font-bold text-slate-700 text-sm">Layak</span></div>
-                    <div className="font-black text-emerald-600">{MOCK_STATS.layak}%</div>
+                    <div className="font-black text-emerald-600">{stats.layak}%</div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-400"></div> <span className="font-bold text-slate-700 text-sm">Perlu Revisi</span></div>
-                    <div className="font-black text-amber-500">{MOCK_STATS.revisi}%</div>
+                    <div className="font-black text-amber-500">{stats.revisi}%</div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500"></div> <span className="font-bold text-slate-700 text-sm">Ditolak</span></div>
-                    <div className="font-black text-rose-600">{MOCK_STATS.ditolak}%</div>
+                    <div className="font-black text-rose-600">{stats.ditolak}%</div>
                   </div>
                 </div>
               </div>
@@ -234,9 +268,9 @@ export default function PrincipalDashboard() {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Layak', value: MOCK_STATS.layak },
-                        { name: 'Revisi', value: MOCK_STATS.revisi },
-                        { name: 'Ditolak', value: MOCK_STATS.ditolak }
+                        { name: 'Layak', value: stats.layak },
+                        { name: 'Revisi', value: stats.revisi },
+                        { name: 'Ditolak', value: stats.ditolak }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -285,12 +319,16 @@ export default function PrincipalDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_MONITORING.map(row => (
+                  {monitoringGuru.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada guru yang terdaftar.</td>
+                    </tr>
+                  ) : monitoringGuru.map(row => (
                     <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">{row.guru}</td>
-                      <td className="px-6 py-4">{row.mapel}</td>
-                      <td className="px-6 py-4">{row.kelas}</td>
-                      <td className="px-6 py-4">{row.semester}</td>
+                      <td className="px-6 py-4 text-slate-500 italic">{row.mapel}</td>
+                      <td className="px-6 py-4 text-slate-500 italic">{row.kelas}</td>
+                      <td className="px-6 py-4 text-slate-500 italic">{row.semester}</td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full font-bold text-xs border ${
                           row.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
@@ -316,13 +354,13 @@ export default function PrincipalDashboard() {
                 <h3 className="font-black text-slate-800 mb-6 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-blue-500" /> Tingkat Kesukaran Soal</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={MOCK_KUALITAS_KESUKARAN} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart data={kualitasKesukaran} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
                       <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                       <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                        {MOCK_KUALITAS_KESUKARAN.map((entry, index) => (
+                        {kualitasKesukaran.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Bar>
@@ -335,15 +373,22 @@ export default function PrincipalDashboard() {
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                 <h3 className="font-black text-slate-800 mb-6 flex items-center gap-2"><Activity className="w-5 h-5 text-violet-500" /> Kualitas Daya Pembeda</h3>
                 <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={MOCK_KUALITAS_BEDA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={4} dot={{ r: 6, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {kualitasBeda.length > 0 && kualitasBeda.some(x => x.value > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={kualitasBeda} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={4} dot={{ r: 6, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 italic font-medium gap-2">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-slate-300" /></div>
+                      Belum ada data untuk ditampilkan
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -362,7 +407,9 @@ export default function PrincipalDashboard() {
                 </div>
               </div>
               <div className="space-y-4">
-                {MOCK_RANKING_MAPEL.map((item, idx) => (
+                {rankingMapel.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 italic">Data belum tersedia</div>
+                ) : rankingMapel.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 group">
                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm group-hover:bg-amber-100 group-hover:text-amber-600 transition-colors">#{idx + 1}</div>
                     <div className="flex-1">
@@ -389,7 +436,9 @@ export default function PrincipalDashboard() {
                 </div>
               </div>
               <div className="space-y-4">
-                {MOCK_RANKING_GURU.map((item, idx) => (
+                {rankingGuru.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 italic">Data belum tersedia</div>
+                ) : rankingGuru.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 group">
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 border border-slate-200 uppercase text-sm group-hover:border-blue-300 transition-colors">{item.guru.charAt(0)}</div>
                     <div className="flex-1">
@@ -432,7 +481,9 @@ export default function PrincipalDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_BERMASALAH.map(row => (
+                  {bermasalah.length === 0 ? (
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada data soal bermasalah.</td></tr>
+                  ) : bermasalah.map(row => (
                     <tr key={row.id} className="hover:bg-rose-50/50 transition-colors">
                       <td className="px-6 py-4 font-black text-slate-800 text-center w-16">#{row.soalNo}</td>
                       <td className="px-6 py-4 font-bold">{row.mapel}</td>
@@ -493,16 +544,20 @@ export default function PrincipalDashboard() {
                     <th className="px-6 py-4">Tipe Soal</th>
                     <th className="px-6 py-4">Penulis</th>
                     <th className="px-6 py-4">Kesukaran</th>
+                    <th className="px-6 py-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_BANK_SOAL.map(row => (
+                  {bankSoal.length === 0 ? (
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada soal di bank soal.</td></tr>
+                  ) : bankSoal.map(row => (
                     <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-slate-800">{row.mapel}</td>
-                      <td className="px-6 py-4 font-mono">{row.kelas}</td>
-                      <td className="px-6 py-4">{row.materi}</td>
-                      <td className="px-6 py-4 text-xs font-bold text-slate-500">{row.tipe}</td>
-                      <td className="px-6 py-4">{row.guru}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-800">{row.materi}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{row.mapel} · Kls {row.kelas}</div>
+                      </td>
+                      <td className="px-6 py-4 font-medium">{row.tipe}</td>
+                      <td className="px-6 py-4 font-bold text-slate-700">{row.guru}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
                           row.kesukaran === 'Mudah' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -511,6 +566,9 @@ export default function PrincipalDashboard() {
                         }`}>
                           {row.kesukaran}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all">Preview</button>
                       </td>
                     </tr>
                   ))}
