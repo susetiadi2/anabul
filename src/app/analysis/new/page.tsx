@@ -300,7 +300,12 @@ function AnalysisContent() {
           <h1 className="text-2xl font-bold">
             {(isViewMode || analysisResult) ? 'Laporan Analisis Butir Soal' : 'Buat Analisis Baru'}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!isViewMode && analysisResult && (
+              <button onClick={saveToCloud} className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold text-sm transition-colors shadow-sm">
+                <Save className="w-4 h-4" /> Simpan ke Database
+              </button>
+            )}
             {analysisResult && (
               <button 
                 onClick={() => window.print()}
@@ -498,17 +503,7 @@ function AnalysisContent() {
               </div>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl flex justify-between items-center print:hidden">
-              <div>
-                <h3 className="font-bold text-lg">Analisis Selesai!</h3>
-                <p className="text-sm">Reliabilitas: {analysisResult.summary.reliability} - {analysisResult.summary.relCat}</p>
-              </div>
-              {!isViewMode && (
-                <button onClick={saveToCloud} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center hover:bg-emerald-700">
-                  <Save className="w-4 h-4 mr-2" /> Simpan ke Database
-                </button>
-              )}
-            </div>
+
             
             <div className="flex border-b border-slate-200 mb-6 mt-4 overflow-x-auto sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-2 rounded-t-xl shadow-sm print:hidden">
               <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-1.5 px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'text-violet-600 border-b-2 border-violet-600' : 'text-slate-500 hover:text-slate-700'}`}>
