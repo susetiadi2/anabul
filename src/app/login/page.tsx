@@ -492,7 +492,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <p className="text-slate-400 text-xs mt-8 font-medium">© 2025 AnasolApp · Sistem Analisis Butir Soal</p>
+      <p className="text-slate-400 text-xs mt-8 font-medium">© 2025 AnasolApp · Sistem Analisis Butir Soal: By Susetiadi-Pengawas DS</p>
     </div>
   )
 }
