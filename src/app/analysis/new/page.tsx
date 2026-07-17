@@ -646,7 +646,7 @@ export default function NewAnalysisPage() {
               <h3 className="font-bold mb-4 print:text-black">Tabel Analisis Butir Soal</h3>
               <div className="overflow-x-auto relative">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b sticky top-15 z-30 shadow-sm">
+                  <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
                     <tr>
                       <th className="px-4 py-3">No Soal</th>
                       <th className="px-4 py-3">Tkt Kesukaran (P)</th>
