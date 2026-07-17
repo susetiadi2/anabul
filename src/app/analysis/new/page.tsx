@@ -76,28 +76,49 @@ export default function NewAnalysisPage() {
     fetchProfile()
   }, [supabase])
 
-  // Load data dari IndexedDB jika ada viewId (mode Viewer)
+  // Load data dari Supabase atau IndexedDB jika ada viewId (mode Viewer)
   useEffect(() => {
     if (!viewId) return;
-    const loadFromIdb = async () => {
+    const loadData = async () => {
+      setIsProcessing(true);
       try {
-        const data = await idbGet(`analysis_${viewId}`);
-        if (data) {
-          setAnalysisResult(data);
-          if (data.identity) {
-            setIdentity(prev => ({ ...prev, ...data.identity }));
+        // Coba ambil dari Supabase terlebih dahulu
+        const { data: dbSession, error: dbError } = await supabase
+          .from('analysis_sessions')
+          .select('data_payload')
+          .eq('id', viewId)
+          .single();
+
+        let dataToLoad = null;
+
+        if (dbSession && dbSession.data_payload) {
+          dataToLoad = dbSession.data_payload;
+        } else {
+          // Fallback ke IndexedDB jika tidak ditemukan di Supabase (untuk kompatibilitas)
+          dataToLoad = await idbGet(`analysis_${viewId}`);
+        }
+
+        if (dataToLoad) {
+          setAnalysisResult(dataToLoad);
+          if (dataToLoad.identity) {
+            setIdentity(prev => ({ ...prev, ...dataToLoad.identity }));
+          }
+          if (dataToLoad.metadata && dataToLoad.metadata.examType) {
+             setExamType(dataToLoad.metadata.examType);
           }
           setActiveTab('ringkasan');
         } else {
-          setError("Data laporan lengkap tidak ditemukan di perangkat ini. Data detail masif hanya tersimpan secara permanen di perangkat lokal (laptop/browser) saat analisis pertama kali dibuat.");
+          setError("Data laporan lengkap tidak ditemukan di database maupun perangkat ini. Jika file telah terhapus, Anda perlu mengunggah ulang.");
         }
       } catch (err) {
-        console.error(err);
-        setError("Gagal memuat data dari penyimpanan lokal.");
+        console.error("Gagal memuat data:", err);
+        setError("Gagal memuat data dari server atau penyimpanan lokal.");
+      } finally {
+        setIsProcessing(false);
       }
     }
-    loadFromIdb();
-  }, [viewId])
+    loadData();
+  }, [viewId, supabase])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
