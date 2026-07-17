@@ -290,7 +290,7 @@ function AnalysisContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8" suppressHydrationWarning>
       <div className={`w-full mx-auto transition-all duration-300 ${!analysisResult ? 'max-w-4xl' : 'max-w-[98%]'}`}>
         <Link href="/" className="inline-flex items-center text-blue-600 font-semibold mb-6 hover:underline print:hidden">
           <ArrowLeft className="w-4 h-4 mr-1" /> Kembali ke Dashboard
