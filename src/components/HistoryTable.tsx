@@ -186,7 +186,7 @@ export default function HistoryTable({ sessions: initialSessions }: { sessions: 
                         <div>
                           <div className="font-bold text-slate-800 line-clamp-1 group-hover:text-blue-700 transition-colors">{session.name || 'Analisis Tanpa Judul'}</div>
                           <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mt-1.5">
-                            <Calendar className="w-3.5 h-3.5" /> {date}
+                            <Calendar className="w-3.5 h-3.5" /> <span suppressHydrationWarning>{date}</span>
                           </div>
                         </div>
                       </div>

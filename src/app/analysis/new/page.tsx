@@ -499,7 +499,7 @@ function AnalysisContent() {
                 <div className="flex"><span className="w-36 font-semibold shrink-0">Thn. Pelajaran</span><span className="mr-2">:</span>{identity.tahunPelajaran || '-'}</div>
                 
                 <div className="flex"><span className="w-36 font-semibold shrink-0">Kelas/Semester</span><span className="mr-2">:</span>{`${identity.tingkatKelas} ${identity.rombel ? identity.rombel + ' ' : ''}/ ${identity.semester}`}</div>
-                <div className="flex"><span className="w-36 font-semibold shrink-0">Tgl. Pelaksanaan</span><span className="mr-2">:</span>{identity.tanggalPelaksanaan ? new Date(identity.tanggalPelaksanaan).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : '-'}</div>
+                <div className="flex"><span className="w-36 font-semibold shrink-0">Tgl. Pelaksanaan</span><span className="mr-2">:</span><span suppressHydrationWarning>{identity.tanggalPelaksanaan ? new Date(identity.tanggalPelaksanaan).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : '-'}</span></div>
               </div>
             </div>
 

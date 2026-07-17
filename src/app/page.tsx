@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   else if (hour >= 18 || hour < 4) greeting = 'Selamat Malam'
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-x-hidden" suppressHydrationWarning>
       {/* Background Ornaments for Glassmorphism */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px] pointer-events-none"></div>
