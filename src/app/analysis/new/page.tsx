@@ -421,9 +421,9 @@ export default function NewAnalysisPage() {
                   <input type="date" value={identity.tanggalPelaksanaan} onChange={e => setIdentity({...identity, tanggalPelaksanaan: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kepala Sekolah</label>
-                  <input type="text" value={identity.kepalaSekolah} onChange={e => setIdentity({...identity, kepalaSekolah: e.target.value})} placeholder="Nama Kepala Sekolah" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white mb-2" />
-                  <input type="text" value={identity.nipKepalaSekolah} onChange={e => setIdentity({...identity, nipKepalaSekolah: e.target.value})} placeholder="NIP Kepala Sekolah" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kepala Sekolah (Otomatis)</label>
+                  <input type="text" value={identity.kepalaSekolah || 'Memuat...'} readOnly disabled className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-600 font-medium cursor-not-allowed mb-2" />
+                  <input type="text" value={identity.nipKepalaSekolah || 'Memuat...'} readOnly disabled className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-600 font-medium cursor-not-allowed" />
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 mt-3 font-medium">*Nama Guru dan Sekolah akan otomatis diambil dari profil Anda saat dicetak.</p>
