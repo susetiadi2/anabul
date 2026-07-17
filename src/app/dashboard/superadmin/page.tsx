@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { resetUserPassword } from '@/app/actions/userActions'
 import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save } from 'lucide-react'
 
 type School = { id: string; name: string; address: string | null; level: string | null; cluster_name: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
@@ -66,6 +67,7 @@ export default function SuperadminDashboard() {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
   const [editUserName, setEditUserName] = useState('')
   const [editUserNip, setEditUserNip] = useState('')
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
   
   // Hapus pengguna
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
@@ -249,6 +251,26 @@ export default function SuperadminDashboard() {
     showMsg('success', 'Data pengguna berhasil diperbarui!')
     setEditingUser(null)
     fetchAll()
+  }
+
+  const handleResetPassword = async () => {
+    if (!editingUser) return
+    const confirmReset = window.confirm(`Apakah Anda yakin ingin mereset password akun ${editingUser.name} menjadi "user123456"?`)
+    if (!confirmReset) return
+
+    setIsResettingPassword(true)
+    try {
+      const res = await resetUserPassword(editingUser.id)
+      if (res.success) {
+        showMsg('success', `Password ${editingUser.name} berhasil direset menjadi "user123456"`)
+      } else {
+        showMsg('error', res.error || 'Gagal mereset password')
+      }
+    } catch (e: any) {
+      showMsg('error', e.message || 'Terjadi kesalahan sistem saat mereset password')
+    } finally {
+      setIsResettingPassword(false)
+    }
   }
 
   const deleteUser = async (id: string) => {
@@ -688,11 +710,17 @@ export default function SuperadminDashboard() {
                   <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">NIP / No HP *</label>
                   <input value={editUserNip} onChange={e => setEditUserNip(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <button onClick={() => setEditingUser(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                  <button onClick={saveEditUser} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> Simpan
+                <div className="pt-2">
+                  <button onClick={handleResetPassword} disabled={isResettingPassword} className="w-full py-3 mb-3 border-2 border-amber-200 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                    <Key className="w-4 h-4" /> 
+                    {isResettingPassword ? 'Mereset Password...' : 'Reset Password ke "user123456"'}
                   </button>
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditingUser(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                    <button onClick={saveEditUser} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                      <Save className="w-4 h-4" /> Simpan
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
