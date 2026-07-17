@@ -538,7 +538,7 @@ function AnalysisContent() {
                     <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Simpangan Baku: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats?.sd ?? '-'}</span></div>
                     <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Nilai Max: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats?.max ?? '-'}</span></div>
                     <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:border-r print:border-black print:rounded-none print:bg-white print:text-center print:text-xs">Nilai Min: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.classStats?.min ?? '-'}</span></div>
-                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:rounded-none print:bg-white print:text-center print:text-xs">Siswa Tuntas: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.summary.tuntas} / {analysisResult.studentData.length}</span></div>
+                    <div className="p-4 bg-slate-50 rounded-lg print:flex-1 print:p-2 print:rounded-none print:bg-white print:text-center print:text-xs">Siswa Tuntas: <br className="hidden md:block"/><span className="font-bold text-lg print:text-base print:block">{analysisResult.summary?.tuntas ?? 0} / {analysisResult.studentData?.length ?? analysisResult.summary?.studentCount ?? 0}</span></div>
                   </div>
                   {/* Reliabilitas - hanya di print */}
                   <div className="hidden print:flex print:items-center print:gap-8 print:mt-4 print:pt-2 print:border-t print:border-slate-300 print:text-sm">
@@ -594,7 +594,7 @@ function AnalysisContent() {
                       </tr>
                     </thead>
                     <tbody>
-                      {analysisResult.studentData.map((s: any, idx: number) => (
+                      {(analysisResult.studentData || []).map((s: any, idx: number) => (
                         <tr key={idx} className="border-b hover:bg-slate-50 transition-colors group print:border-black">
                           <td className="w-12.5 min-w-12.5 px-2 py-2.5 border-x text-center text-slate-500 sticky left-0 z-10 bg-white group-hover:bg-slate-50 print:static print:left-auto print:px-0.5 print:py-0.5 print:text-[8px] print:border print:border-black print:bg-white">{idx + 1}</td>
                           <td className="w-62.5 min-w-62.5 px-4 py-2.5 border-x text-left font-medium text-slate-700 sticky left-12.5 z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:min-w-0 print:w-auto print:px-1 print:py-0.5 print:text-[8px] print:shadow-none print:border print:border-black print:bg-white print:truncate print:max-w-32.5">{s.name}</td>
@@ -707,8 +707,8 @@ function AnalysisContent() {
 
             <div className={`${activeTab === 'siswa' ? 'block' : 'hidden'} print:block print:break-before-page`}>
             {(() => {
-              const remedial = analysisResult.studentData.filter((s: any) => s.status !== 'Tuntas')
-              const pengayaan = analysisResult.studentData.filter((s: any) => s.status === 'Tuntas')
+              const remedial = (analysisResult.studentData || []).filter((s: any) => s.status !== 'Tuntas')
+              const pengayaan = (analysisResult.studentData || []).filter((s: any) => s.status === 'Tuntas')
               
               // Soal yang perlu re-teaching: P < 0.3 (Sukar) ATAU validitas rendah DAN keputusan bukan "Dipakai"
               const soalReteaching = analysisResult.analyzedData.filter((item: any) =>
@@ -725,7 +725,7 @@ function AnalysisContent() {
                   {/* Header info */}
                   <div className="flex items-center justify-between text-sm text-slate-500 mb-2">
                     <span>KKTP: <span className="font-bold text-slate-700">{kkm}</span></span>
-                    <span>Total {analysisResult.studentData.length} siswa</span>
+                    <span>Total {analysisResult.studentData?.length ?? analysisResult.summary?.studentCount ?? 0} siswa</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
