@@ -149,7 +149,13 @@ export default function NewAnalysisPage() {
         setIsProcessing(false)
       } catch (err: unknown) { 
         console.error(err)
-        setError(err instanceof Error ? err.message : 'Gagal membaca file. Pastikan format valid.')
+        let errorMsg = err instanceof Error ? err.message : 'Gagal membaca file. Pastikan format valid.'
+        
+        if (errorMsg.includes("is not a function") || errorMsg.includes("read") || errorMsg.includes("sheet_to_json")) {
+            errorMsg = "FILE RUSAK / BUKAN EXCEL: Pastikan Anda mengunggah file berekstensi .xlsx atau .csv yang valid dan tidak *corrupt*."
+        }
+
+        setError(errorMsg)
         setIsProcessing(false)
       }
     }
@@ -440,7 +446,18 @@ export default function NewAnalysisPage() {
               </div>
             </div>
 
-            {error && <div className="text-red-500 font-semibold mb-4">{error}</div>}
+            {error && (
+              <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl mb-6 shadow-sm flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-rose-800 text-sm mb-1">Gagal Menganalisis File</h4>
+                  <p className="text-sm text-rose-700 font-medium leading-relaxed">{error}</p>
+                  <button onClick={downloadTemplate} className="mt-3 text-xs font-bold text-rose-600 hover:text-rose-800 underline underline-offset-2 flex items-center gap-1 transition-colors">
+                    <DownloadCloud className="w-3 h-3" /> Unduh Template Resmi AnasolApp
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button onClick={processFile} disabled={!file || isProcessing || kkm === ''} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50">
               {isProcessing ? 'Memproses...' : 'Mulai Analisis'}

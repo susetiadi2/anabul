@@ -11,7 +11,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
     });
 
     if (questionCols.length === 0) { 
-        throw new Error(`Gagal mendeteksi kolom soal. Header terbaca: [${keys.slice(0,5).join(", ")}...]. Pastikan ada angka pada header soal.`);
+        throw new Error(`KOLOM SOAL TIDAK TERDETEKSI: Kami tidak menemukan angka (1, 2, 3) di baris pertama tabel Excel Anda. Pastikan baris pertama digunakan untuk nomor soal, bukan teks lain.`);
     }
 
     let maxScores: Record<string, number> = {};
@@ -45,7 +45,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         });
 
         if (kunciRowIndex === -1) {
-            throw new Error(`Baris "Kunci Jawaban" tidak ditemukan!`);
+            throw new Error(`BARIS KUNCI JAWABAN HILANG: Untuk soal Pilihan Ganda / Benar-Salah, Anda wajib menyertakan baris dengan tulisan "Kunci Jawaban" di kolom Nama Siswa. Silakan cek kembali file Excel Anda.`);
         }
 
         const kunciRow = rawData[kunciRowIndex];
@@ -66,7 +66,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
         });
 
         if (kunciRowIndex === -1 || maxRowIndex === -1) {
-            throw new Error(`Untuk tipe Campuran, baris "Kunci Jawaban" dan "Skor Maksimal" HARUS ada!`);
+            throw new Error(`BARIS KUNCI / SKOR HILANG: Untuk jenis soal Campuran, Anda WAJIB menyertakan baris "Kunci Jawaban" DAN baris "Skor Maksimal" di bawahnya. Keduanya harus ditulis dengan jelas di kolom Nama Siswa.`);
         }
 
         const kunciRow = rawData[kunciRowIndex];
@@ -101,7 +101,7 @@ export const analyzeData = (rawData: any[], examType: string, kkm: number) => {
     });
 
     if (studentRows.length === 0) { 
-        throw new Error("Data siswa kosong setelah proses pembersihan data.");
+        throw new Error("DATA SISWA KOSONG: Kami tidak menemukan satupun daftar nama siswa di bawah baris Kunci Jawaban. Pastikan format kolom nama/nomor terisi dengan benar.");
     }
 
     // Deteksi jumlah opsi pilihan ganda secara dinamis (Cari abjad tertinggi dari kunci jawaban & jawaban siswa)
