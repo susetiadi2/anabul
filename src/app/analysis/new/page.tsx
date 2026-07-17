@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import * as XLSX from 'xlsx'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { analyzeData } from '@/lib/analyzer'
 import { Upload, Save, ArrowLeft, BarChart2, BookOpen, X, Printer, DownloadCloud, AlertTriangle } from 'lucide-react'
@@ -11,7 +11,7 @@ import Link from 'next/link'
 import ChartsDashboard from '@/components/ChartsDashboard'
 import { set as idbSet, get as idbGet } from 'idb-keyval'
 
-export default function NewAnalysisPage() {
+function AnalysisContent() {
   const [file, setFile] = useState<File | null>(null)
   const [examType, setExamType] = useState('pg_huruf')
   const [kkm, setKkm] = useState<number | string>(75)
@@ -22,13 +22,8 @@ export default function NewAnalysisPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
 
-  // Baca viewId langsung dari URL saat pertama kali render (lazy initializer)
-  const [viewId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('viewId');
-    }
-    return null;
-  })
+  const searchParams = useSearchParams()
+  const viewId = searchParams ? searchParams.get('viewId') : null
   const isViewMode = !!viewId;
 
   const today = new Date().toISOString().split('T')[0];
@@ -1198,5 +1193,13 @@ export default function NewAnalysisPage() {
         }
       `}} />
     </div>
+  )
+}
+
+export default function NewAnalysisPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-slate-500 font-semibold animate-pulse">Memuat aplikasi...</div>}>
+      <AnalysisContent />
+    </Suspense>
   )
 }
