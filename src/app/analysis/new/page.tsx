@@ -288,6 +288,7 @@ function AnalysisContent() {
       if (!profileData) {
         const { error: profileInsertError } = await supabase.from('user_profiles').insert({
           id: user.id,
+          nip: identity.nip || '-', // Tambahan agar tidak error null constraint
           name: identity.guru || 'Pengguna',
           school_name: identity.sekolah || 'Tidak Diketahui',
           role: 'guru'
