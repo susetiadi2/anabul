@@ -107,7 +107,12 @@ export default function LoginPage() {
     if (!email || !password) { setError('Email dan Password wajib diisi.'); return }
     setLoading(true); setError(null)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Buat klien supabase khusus dengan cookie maxAge jika rememberMe aktif (7 hari), atau undefined (session)
+      const supabaseLogin = createClient(
+        rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : undefined
+      )
+
+      const { data, error } = await supabaseLogin.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
