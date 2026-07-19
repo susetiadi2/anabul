@@ -3,10 +3,50 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Users, RefreshCw, LogOut, GraduationCap, Building, Activity, FileText, CheckCircle, AlertTriangle, XCircle, Search, Filter, BookOpen, Star, TrendingUp, ChevronRight, BarChart2, Award } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
+import { Users, RefreshCw, LogOut, Building, Activity, FileText, AlertTriangle, Search, Filter, BookOpen, Star, TrendingUp, BarChart2, Award } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 
 type UserProfile = { id: string; nip: string; name: string; school_name: string; role: string; cluster_name: string | null }
+
+type MonitoringGuruRow = {
+  id: string
+  guru: string
+  mapel: string
+  kelas: string
+  semester: string
+  status: string
+}
+
+type KualitasPoint = {
+  name: string
+  value: number
+  color?: string
+}
+
+type RankingItem = {
+  guru: string
+  mapel: string
+  nilai: number
+}
+
+type BermasalahItem = {
+  id: string
+  soalNo: number
+  mapel: string
+  kelas: string
+  masalah: string
+  tingkat: string
+}
+
+type BankSoalItem = {
+  id: string
+  materi: string
+  mapel: string
+  kelas: string
+  tipe: string
+  guru: string
+  kesukaran: string
+}
 
 export default function PrincipalDashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -24,18 +64,26 @@ export default function PrincipalDashboard() {
     revisi: 0,
     ditolak: 0
   })
-  const [monitoringGuru, setMonitoringGuru] = useState<any[]>([])
-  const [kualitasKesukaran, setKualitasKesukaran] = useState<any[]>([])
-  const [kualitasBeda, setKualitasBeda] = useState<any[]>([
+  const [monitoringGuru, setMonitoringGuru] = useState<MonitoringGuruRow[]>([])
+  const [kualitasKesukaran, setKualitasKesukaran] = useState<KualitasPoint[]>([])
+  const [kualitasBeda] = useState<KualitasPoint[]>([
     { name: 'Sangat Baik', value: 0 },
     { name: 'Baik', value: 0 },
     { name: 'Cukup', value: 0 },
     { name: 'Jelek', value: 0 }
   ])
-  const [rankingMapel, setRankingMapel] = useState<any[]>([])
-  const [rankingGuru, setRankingGuru] = useState<any[]>([])
-  const [bermasalah, setBermasalah] = useState<any[]>([])
-  const [bankSoal, setBankSoal] = useState<any[]>([])
+  const [rankingMapel, setRankingMapel] = useState<RankingItem[]>([])
+  const [rankingGuru, setRankingGuru] = useState<RankingItem[]>([])
+  const [bermasalah, setBermasalah] = useState<BermasalahItem[]>([])
+  const [bankSoal, setBankSoal] = useState<BankSoalItem[]>([])
+  const [bermasalahSearch, setBermasalahSearch] = useState('')
+  const [bermasalahFilterMapel, setBermasalahFilterMapel] = useState('Semua Mapel')
+  const [bermasalahFilterKelas, setBermasalahFilterKelas] = useState('Semua Kelas')
+  const [bermasalahPage, setBermasalahPage] = useState(1)
+  const [bankSearch, setBankSearch] = useState('')
+  const [bankFilterMapel, setBankFilterMapel] = useState('Semua Mapel')
+  const [bankFilterKelas, setBankFilterKelas] = useState('Semua Kelas')
+  const [bankPage, setBankPage] = useState(1)
 
   const supabase = createClient()
   const router = useRouter()
@@ -80,9 +128,122 @@ export default function PrincipalDashboard() {
       const persentaseRevisi = totalSoalDianalisis > 0 ? Math.round((totalRevisi / totalSoalDianalisis) * 100) : 0
       const persentaseDitolak = totalSoalDianalisis > 0 ? Math.round((totalSukar / totalSoalDianalisis) * 100) : 0
 
+      const mapelTotals: Record<string, { totalScore: number; count: number }> = {}
+      const guruTotals: Record<string, { totalScore: number; count: number }> = {}
+      const guruTopMapel: Record<string, string> = {}
+      const uniqueMapel = new Set<string>()
+
+      sessionList.forEach(session => {
+        const payload = session.data_payload
+        const identity = payload?.identity
+        const mapelName = identity?.mataPelajaran === 'Lainnya'
+          ? identity?.mataPelajaranLain || session.exam_type || 'Tidak Diketahui'
+          : identity?.mataPelajaran || session.exam_type || 'Tidak Diketahui'
+        const guruName = guruList.find(g => g.id === session.user_id)?.name || identity?.guru || 'Guru Tidak Diketahui'
+        const meta = payload?.metadata
+        const score = meta?.totalSoal ? Math.round(((meta.soalValid || 0) / meta.totalSoal) * 100) : 0
+
+        uniqueMapel.add(mapelName)
+        if (!guruTopMapel[guruName]) {
+          guruTopMapel[guruName] = mapelName
+        }
+
+        if (!mapelTotals[mapelName]) {
+          mapelTotals[mapelName] = { totalScore: score, count: 1 }
+        } else {
+          mapelTotals[mapelName].totalScore += score
+          mapelTotals[mapelName].count += 1
+        }
+
+        if (!guruTotals[guruName]) {
+          guruTotals[guruName] = { totalScore: score, count: 1 }
+        } else {
+          guruTotals[guruName].totalScore += score
+          guruTotals[guruName].count += 1
+        }
+      })
+
+      const rankingMapelData = Object.entries(mapelTotals)
+        .map(([mapel, stats]) => ({ mapel, guru: mapel, nilai: Math.round(stats.totalScore / stats.count) }))
+        .sort((a, b) => b.nilai - a.nilai)
+
+      const rankingGuruData = Object.entries(guruTotals)
+        .map(([guru, stats]) => ({ guru, mapel: guruTopMapel[guru] || '-', nilai: Math.round(stats.totalScore / stats.count) }))
+        .sort((a, b) => b.nilai - a.nilai)
+
+      const bermasalahData: BermasalahItem[] = []
+      sessionList.forEach(session => {
+        const payload = session.data_payload
+        const identity = payload?.identity
+        const analyzedItems = payload?.analyzedData as Array<{ id?: number; decision?: string; pCat?: string; valStatus?: string }> || []
+        const mapelName = identity?.mataPelajaran === 'Lainnya'
+          ? identity?.mataPelajaranLain || session.exam_type || 'Tidak Diketahui'
+          : identity?.mataPelajaran || session.exam_type || 'Tidak Diketahui'
+        const kelasLabel = identity ? `${identity.tingkatKelas || ''}${identity.rombel ? ` ${identity.rombel}` : ''}`.trim() : '-'
+
+        analyzedItems.forEach(item => {
+          let masalah = ''
+          let tingkat = ''
+          if (item.decision === 'Dibuang' || item.decision === 'Gugur') {
+            masalah = 'Soal Dibuang / Gugur'
+            tingkat = 'Tinggi'
+          } else if (item.decision === 'Revisi' || item.decision === 'Revisi/Buang') {
+            masalah = 'Perlu Revisi'
+            tingkat = 'Sedang'
+          } else if (item.pCat === 'Sukar') {
+            masalah = 'Soal Sulit'
+            tingkat = 'Sedang'
+          } else if (item.valStatus && item.valStatus !== 'Valid') {
+            masalah = 'Validitas Rendah'
+            tingkat = 'Sedang'
+          }
+
+          if (masalah) {
+            bermasalahData.push({
+              id: `${session.id}-${item.id ?? 'unknown'}`,
+              soalNo: item.id ?? 0,
+              mapel: mapelName,
+              kelas: kelasLabel || '-',
+              masalah,
+              tingkat
+            })
+          }
+        })
+      })
+
+      const bankSoalData: BankSoalItem[] = []
+      sessionList.forEach(session => {
+        const payload = session.data_payload
+        const identity = payload?.identity
+        const analyzedItems = payload?.analyzedData as Array<{ id?: number; decision?: string; pCat?: string }> || []
+        const mapelName = identity?.mataPelajaran === 'Lainnya'
+          ? identity?.mataPelajaranLain || session.exam_type || 'Tidak Diketahui'
+          : identity?.mataPelajaran || session.exam_type || 'Tidak Diketahui'
+        const kelasLabel = identity ? `${identity.tingkatKelas || ''}${identity.rombel ? ` ${identity.rombel}` : ''}`.trim() : '-'
+        const tutorName = guruList.find(g => g.id === session.user_id)?.name || identity?.guru || 'Guru Tidak Diketahui'
+        const examTypeLabel = session.exam_type === 'pg_huruf' ? 'PG (A-E)'
+          : session.exam_type === 'bs' ? 'Benar-Salah'
+          : session.exam_type === 'uraian' ? 'Uraian'
+          : session.exam_type === 'campuran' ? 'Campuran' : 'Lainnya'
+
+        analyzedItems.forEach(item => {
+          if (item.decision === 'Dipakai') {
+            bankSoalData.push({
+              id: `${session.id}-${item.id ?? 'unknown'}`,
+              materi: identity?.materiPokok || `Soal ${item.id ?? 'N/A'}`,
+              mapel: mapelName,
+              kelas: kelasLabel || '-',
+              tipe: examTypeLabel,
+              guru: tutorName,
+              kesukaran: item.pCat || 'Tidak Diketahui'
+            })
+          }
+        })
+      })
+
       setStats({
         totalGuru: guruList.length,
-        totalMapel: 0, 
+        totalMapel: uniqueMapel.size,
         analisisSelesai: sessionList.length,
         paketSoal: sessionList.length,
         soalDianalisis: totalSoalDianalisis,
@@ -90,16 +251,28 @@ export default function PrincipalDashboard() {
         revisi: persentaseRevisi,
         ditolak: persentaseDitolak
       })
+      setRankingMapel(rankingMapelData)
+      setRankingGuru(rankingGuruData)
+      setBermasalah(bermasalahData)
+      setBankSoal(bankSoalData)
 
       // Monitoring Guru
       const monitoring = guruList.map(guru => {
         const guruSessions = sessionList.filter(s => s.user_id === guru.id)
+        const sortedSessions = guruSessions.slice().sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        const latestSession = sortedSessions[0]
+        const sessionWithIdentity = sortedSessions.find(s => !!s.data_payload?.identity) || latestSession
+        const sessionIdentity = sessionWithIdentity?.data_payload?.identity
+        const mapelLabel = sessionIdentity?.mataPelajaran === 'Lainnya'
+          ? sessionIdentity?.mataPelajaranLain || latestSession?.exam_type || '-'
+          : sessionIdentity?.mataPelajaran || latestSession?.exam_type || '-'
+        const kelasLabel = sessionIdentity ? `${sessionIdentity.tingkatKelas || ''}${sessionIdentity.rombel ? ` ${sessionIdentity.rombel}` : ''}`.trim() : '-'
         return {
           id: guru.id,
           guru: guru.name,
-          mapel: '-',
-          kelas: '-', 
-          semester: '-',
+          mapel: mapelLabel || '-',
+          kelas: kelasLabel || '-',
+          semester: sessionIdentity?.semester || latestSession?.data_payload?.metadata?.semester || '-',
           status: guruSessions.length > 0 ? 'Selesai' : 'Belum Mulai'
         }
       })
@@ -144,6 +317,34 @@ export default function PrincipalDashboard() {
     router.replace('/login')
   }
 
+  const normalizedBermasalahSearch = bermasalahSearch.trim().toLowerCase()
+  const bermasalahMapelOptions = Array.from(new Set(bermasalah.map(item => item.mapel))).sort()
+  const bermasalahKelasOptions = Array.from(new Set(bermasalah.map(item => item.kelas))).sort()
+  const filteredBermasalah = bermasalah.filter(item => {
+    const matchesMapel = bermasalahFilterMapel === 'Semua Mapel' || item.mapel === bermasalahFilterMapel
+    const matchesKelas = bermasalahFilterKelas === 'Semua Kelas' || item.kelas === bermasalahFilterKelas
+    const matchesSearch = normalizedBermasalahSearch === '' || [item.mapel, item.kelas, item.masalah, item.tingkat].some(value => value.toLowerCase().includes(normalizedBermasalahSearch))
+    return matchesMapel && matchesKelas && matchesSearch
+  })
+
+  const normalizedBankSearch = bankSearch.trim().toLowerCase()
+  const bankMapelOptions = Array.from(new Set(bankSoal.map(item => item.mapel))).sort()
+  const bankKelasOptions = Array.from(new Set(bankSoal.map(item => item.kelas))).sort()
+  const filteredBankSoal = bankSoal.filter(item => {
+    const matchesMapel = bankFilterMapel === 'Semua Mapel' || item.mapel === bankFilterMapel
+    const matchesKelas = bankFilterKelas === 'Semua Kelas' || item.kelas === bankFilterKelas
+    const matchesSearch = normalizedBankSearch === '' || [item.mapel, item.kelas, item.materi, item.tipe, item.guru].some(value => value.toLowerCase().includes(normalizedBankSearch))
+    return matchesMapel && matchesKelas && matchesSearch
+  })
+
+  const ITEMS_PER_PAGE = 10
+  const bermasalahPageCount = Math.max(1, Math.ceil(filteredBermasalah.length / ITEMS_PER_PAGE))
+  const bankPageCount = Math.max(1, Math.ceil(filteredBankSoal.length / ITEMS_PER_PAGE))
+  const currentBermasalahPage = Math.min(bermasalahPage, bermasalahPageCount)
+  const currentBankPage = Math.min(bankPage, bankPageCount)
+  const pagedBermasalah = filteredBermasalah.slice((currentBermasalahPage - 1) * ITEMS_PER_PAGE, currentBermasalahPage * ITEMS_PER_PAGE)
+  const pagedBankSoal = filteredBankSoal.slice((currentBankPage - 1) * ITEMS_PER_PAGE, currentBankPage * ITEMS_PER_PAGE)
+
   if (loading || !profile) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
@@ -168,7 +369,7 @@ export default function PrincipalDashboard() {
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <div className="w-12 h-12 bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
               <Building className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -202,7 +403,7 @@ export default function PrincipalDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all shadow-sm ${
                   isActive 
-                    ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-emerald-500/25 border-transparent' 
+                    ? 'bg-linear-to-br from-emerald-600 to-teal-600 text-white shadow-emerald-500/25 border-transparent' 
                     : 'bg-white text-slate-600 hover:text-emerald-700 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-200'
                 }`}
               >
@@ -220,22 +421,22 @@ export default function PrincipalDashboard() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
-                <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><Users className="w-32 h-32" /></div>
+                <div className="absolute -right-2.5 -top-2.5 opacity-[0.03] group-hover:scale-110 transition-transform"><Users className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Guru Terdaftar</div>
                 <div className="text-4xl font-black text-slate-800">{stats.totalGuru}</div>
               </div>
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
-                <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><BookOpen className="w-32 h-32" /></div>
+                <div className="absolute -right-2.5 -top-2.5 opacity-[0.03] group-hover:scale-110 transition-transform"><BookOpen className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Mata Pelajaran</div>
                 <div className="text-4xl font-black text-slate-800">{stats.totalMapel}</div>
               </div>
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
-                <div className="absolute right-[-10px] top-[-10px] opacity-[0.03] group-hover:scale-110 transition-transform"><FileText className="w-32 h-32" /></div>
+                <div className="absolute -right-2.5 -top-2.5 opacity-[0.03] group-hover:scale-110 transition-transform"><FileText className="w-32 h-32" /></div>
                 <div className="text-slate-500 font-bold text-sm uppercase tracking-wide mb-2">Paket Soal</div>
                 <div className="text-4xl font-black text-slate-800">{stats.paketSoal}</div>
               </div>
-              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 border border-transparent rounded-3xl p-6 shadow-lg shadow-emerald-500/20 relative overflow-hidden group text-white">
-                <div className="absolute right-[-10px] top-[-10px] opacity-10 group-hover:scale-110 transition-transform"><Activity className="w-32 h-32" /></div>
+              <div className="bg-linear-to-br from-emerald-500 to-teal-600 border border-transparent rounded-3xl p-6 shadow-lg shadow-emerald-500/20 relative overflow-hidden group text-white">
+                <div className="absolute -right-2.5 -top-2.5 opacity-10 group-hover:scale-110 transition-transform"><Activity className="w-32 h-32" /></div>
                 <div className="text-emerald-100 font-bold text-sm uppercase tracking-wide mb-2">Soal Dianalisis</div>
                 <div className="text-4xl font-black">{stats.soalDianalisis.toLocaleString()}</div>
               </div>
@@ -463,45 +664,83 @@ export default function PrincipalDashboard() {
         {activeTab === 'bermasalah' && (
           <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
              <div className="p-6 border-b border-slate-100 bg-rose-50/30">
-              <div className="flex items-center gap-3 mb-2">
-                <AlertTriangle className="w-6 h-6 text-rose-500" />
-                <h3 className="font-black text-lg text-slate-800">Monitoring Soal Bermasalah</h3>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <AlertTriangle className="w-6 h-6 text-rose-500" />
+                    <h3 className="font-black text-lg text-slate-800">Monitoring Soal Bermasalah</h3>
+                  </div>
+                  <p className="text-slate-600 text-sm">Butir soal di bawah ini terdeteksi oleh sistem memiliki masalah kualitas dan membutuhkan perhatian atau revisi segera.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
+                  <input
+                    value={bermasalahSearch}
+                    onChange={e => { setBermasalahSearch(e.target.value); setBermasalahPage(1) }}
+                    placeholder="Cari mapel / kelas / masalah..."
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-rose-500 focus:ring-rose-500/20"
+                  />
+                  <select value={bermasalahFilterMapel} onChange={e => { setBermasalahFilterMapel(e.target.value); setBermasalahPage(1) }} className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-rose-500 focus:ring-rose-500/20">
+                    <option>Semua Mapel</option>
+                    {bermasalahMapelOptions.map(mapel => <option key={mapel}>{mapel}</option>)}
+                  </select>
+                  <select value={bermasalahFilterKelas} onChange={e => { setBermasalahFilterKelas(e.target.value); setBermasalahPage(1) }} className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-rose-500 focus:ring-rose-500/20">
+                    <option>Semua Kelas</option>
+                    {bermasalahKelasOptions.map(kelas => <option key={kelas}>{kelas}</option>)}
+                  </select>
+                </div>
               </div>
-              <p className="text-slate-600 text-sm">Butir soal di bawah ini terdeteksi oleh sistem memiliki masalah kualitas dan membutuhkan perhatian atau revisi segera.</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50/50 text-slate-500 font-extrabold uppercase text-xs">
-                  <tr>
-                    <th className="px-6 py-4">No. Soal</th>
-                    <th className="px-6 py-4">Mata Pelajaran</th>
-                    <th className="px-6 py-4">Kelas</th>
-                    <th className="px-6 py-4">Kategori Masalah</th>
-                    <th className="px-6 py-4">Prioritas</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {bermasalah.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada data soal bermasalah.</td></tr>
-                  ) : bermasalah.map(row => (
-                    <tr key={row.id} className="hover:bg-rose-50/50 transition-colors">
-                      <td className="px-6 py-4 font-black text-slate-800 text-center w-16">#{row.soalNo}</td>
-                      <td className="px-6 py-4 font-bold">{row.mapel}</td>
-                      <td className="px-6 py-4">{row.kelas}</td>
-                      <td className="px-6 py-4 text-rose-600 font-medium">{row.masalah}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider border ${
-                          row.tingkat === 'Tinggi' ? 'bg-rose-100 text-rose-700 border-rose-200' :
-                          row.tingkat === 'Sedang' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                          'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>
-                          {row.tingkat}
-                        </span>
-                      </td>
+              <div className="max-h-130 overflow-y-auto border-t border-slate-100">
+                <table className="min-w-full text-left text-sm text-slate-600">
+                  <thead className="sticky top-0 bg-white/95 text-slate-500 font-extrabold uppercase text-xs border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4">No. Soal</th>
+                      <th className="px-6 py-4">Mata Pelajaran</th>
+                      <th className="px-6 py-4">Kelas</th>
+                      <th className="px-6 py-4">Kategori Masalah</th>
+                      <th className="px-6 py-4">Prioritas</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBermasalah.length === 0 ? (
+                      <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada data soal bermasalah.</td></tr>
+                    ) : pagedBermasalah.map(row => (
+                      <tr key={row.id} className="hover:bg-rose-50/50 transition-colors">
+                        <td className="px-6 py-4 font-black text-slate-800 text-center w-16">#{row.soalNo}</td>
+                        <td className="px-6 py-4 font-bold">{row.mapel}</td>
+                        <td className="px-6 py-4">{row.kelas}</td>
+                        <td className="px-6 py-4 text-rose-600 font-medium">{row.masalah}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider border ${
+                            row.tingkat === 'Tinggi' ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                            row.tingkat === 'Sedang' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                            'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {row.tingkat}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 bg-slate-50 border-t border-slate-100">
+                <div className="text-xs text-slate-500">Menampilkan {pagedBermasalah.length} dari {filteredBermasalah.length} masalah</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setBermasalahPage(currentBermasalahPage - 1)}
+                    disabled={currentBermasalahPage <= 1}
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >Sebelumnya</button>
+                  <span className="text-sm font-semibold text-slate-700">{currentBermasalahPage} / {bermasalahPageCount}</span>
+                  <button
+                    onClick={() => setBermasalahPage(currentBermasalahPage + 1)}
+                    disabled={currentBermasalahPage >= bermasalahPageCount}
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >Berikutnya</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -510,7 +749,7 @@ export default function PrincipalDashboard() {
           <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
+                <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
@@ -518,25 +757,30 @@ export default function PrincipalDashboard() {
                   <p className="text-slate-500 text-sm">Repositori butir soal yang telah diverifikasi dan lolos analisis kelayakan.</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <select className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:border-blue-500">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 w-full sm:w-auto">
+                <input
+                  value={bankSearch}
+                  onChange={e => { setBankSearch(e.target.value); setBankPage(1) }}
+                  placeholder="Cari mapel / materi / guru..."
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-blue-500/20"
+                />
+                <select value={bankFilterMapel} onChange={e => { setBankFilterMapel(e.target.value); setBankPage(1) }} className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-blue-500/20">
                   <option>Semua Mapel</option>
-                  <option>IPA</option>
-                  <option>Matematika</option>
+                  {bankMapelOptions.map(mapel => <option key={mapel}>{mapel}</option>)}
                 </select>
-                <select className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:border-blue-500">
+                <select value={bankFilterKelas} onChange={e => { setBankFilterKelas(e.target.value); setBankPage(1) }} className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-blue-500/20">
                   <option>Semua Kelas</option>
-                  <option>VII</option>
-                  <option>VIII</option>
+                  {bankKelasOptions.map(kelas => <option key={kelas}>{kelas}</option>)}
                 </select>
-                <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
-                  <Search className="w-4 h-4" /> Cari
+                <button onClick={() => { setBankSearch(''); setBankFilterMapel('Semua Mapel'); setBankFilterKelas('Semua Kelas') }} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                  <Search className="w-4 h-4" /> Reset
                 </button>
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50/50 text-slate-500 font-extrabold uppercase text-xs">
+              <div className="max-h-130 overflow-y-auto border-t border-slate-100">
+                <table className="min-w-full text-left text-sm text-slate-600">
+                  <thead className="sticky top-0 bg-white/95 text-slate-500 font-extrabold uppercase text-xs border-b border-slate-200">
                   <tr>
                     <th className="px-6 py-4">Mata Pelajaran</th>
                     <th className="px-6 py-4">Kelas</th>
@@ -548,14 +792,13 @@ export default function PrincipalDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {bankSoal.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">Belum ada soal di bank soal.</td></tr>
-                  ) : bankSoal.map(row => (
+                  {filteredBankSoal.length === 0 ? (
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500 italic">Belum ada soal di bank soal.</td></tr>
+                  ) : pagedBankSoal.map(row => (
                     <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-800">{row.materi}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{row.mapel} · Kls {row.kelas}</div>
-                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-800">{row.mapel}</td>
+                      <td className="px-6 py-4 text-slate-500">{row.kelas}</td>
+                      <td className="px-6 py-4 font-bold text-slate-800">{row.materi}</td>
                       <td className="px-6 py-4 font-medium">{row.tipe}</td>
                       <td className="px-6 py-4 font-bold text-slate-700">{row.guru}</td>
                       <td className="px-6 py-4">
@@ -576,6 +819,7 @@ export default function PrincipalDashboard() {
               </table>
             </div>
           </div>
+        </div>
         )}
 
       </div>

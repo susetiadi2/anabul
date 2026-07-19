@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [clusterName, setClusterName] = useState('')
   const [role, setRole] = useState<Role>('guru')
@@ -103,11 +104,11 @@ export default function LoginPage() {
   }
 
   const handleLogin = async () => {
-    if (!nip || !password) { setError('NIP dan Password wajib diisi.'); return }
+    if (!email || !password) { setError('Email dan Password wajib diisi.'); return }
     setLoading(true); setError(null)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: nipToEmail(nip),
+        email: email.trim(),
         password,
       })
       if (error) throw error
@@ -132,7 +133,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const msg = err.message || ''
       if (msg.includes('Invalid login credentials')) {
-        setError('NIP atau Password salah. Silakan coba lagi.')
+        setError('Email atau Password salah. Silakan coba lagi.')
       } else {
         setError(msg || 'Terjadi kesalahan. Coba lagi.')
       }
@@ -140,8 +141,8 @@ export default function LoginPage() {
   }
 
   const handleRegister = async () => {
-    if (!nip || !password || !name) {
-      setError('NIP, Password, dan Nama Lengkap wajib diisi.'); return
+    if (!nip || !password || !name || !email) {
+      setError('NIP, Email, Password, dan Nama Lengkap wajib diisi.'); return
     }
     if (role !== 'superadmin' && role !== 'pengawas' && !schoolName) {
       setError('Nama Sekolah wajib diisi.'); return
@@ -168,9 +169,11 @@ export default function LoginPage() {
         if (licErr || !license) throw new Error('Kode Lisensi tidak valid atau sudah tidak aktif.')
       }
 
-      // Daftarkan ke Supabase Auth menggunakan email buatan dari NIP
+      // Daftarkan ke Supabase Auth menggunakan email nyata yang diberikan
+      const cleanEmail = email.trim()
+      if (!cleanEmail || !cleanEmail.includes('@')) throw new Error('Alamat email tidak valid.')
       const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: nipToEmail(nip),
+        email: cleanEmail,
         password,
       })
       if (authErr) throw authErr
@@ -188,9 +191,9 @@ export default function LoginPage() {
       })
       if (profileErr) throw profileErr
 
-      setSuccess('Akun berhasil dibuat! Silakan masuk menggunakan NIP dan Password Anda.')
+      setSuccess('Akun berhasil dibuat! Silakan masuk menggunakan Email dan Password Anda.')
       setMode('login')
-      setNip(''); setPassword(''); setName(''); setSchoolName(''); setLicenseCode('')
+      setNip(''); setEmail(''); setPassword(''); setName(''); setSchoolName(''); setLicenseCode('')
     } catch (err: any) {
       const msg = err.message || ''
       if (msg.includes('already registered') || msg.includes('already been registered')) {
@@ -202,7 +205,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-4">
 
       {/* Logo */}
       <div className="flex items-center gap-3 mb-8">
@@ -275,6 +278,18 @@ export default function LoginPage() {
                   placeholder="Contoh: Budi Santoso, S.Pd"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
+                />
+              </div>
+
+              {/* Email untuk notifikasi & reset */}
+              <div>
+                <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">Email Aktif</label>
+                <input
+                  type="email"
+                  placeholder="Alamat email aktif (untuk reset & notifikasi)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
                 />
               </div>
@@ -376,20 +391,35 @@ export default function LoginPage() {
               )}
             </>
           )}
-
-          {/* NIP */}
-          <div>
-            <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
-              NIP / No Handphone
-            </label>
-            <input
-              type="text"
-              placeholder="Masukkan NIP atau No HP Anda"
-              value={nip}
-              onChange={(e) => setNip(e.target.value)}
-              className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
-            />
-          </div>
+          {/* Email (login) or NIP (register) */}
+          {mode === 'login' ? (
+            <div>
+              <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="Masukkan alamat email Anda"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && mode === 'login' && handleLogin()}
+                className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-slate-700 text-xs font-extrabold uppercase tracking-wider mb-1.5">
+                Email
+              </label>
+              <input
+                type="text"
+                placeholder="Masukkan Email Anda"
+                value={nip}
+                onChange={(e) => setNip(e.target.value)}
+                className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
+              />
+            </div>
+          )}
 
           {/* Password */}
           <div>
@@ -438,6 +468,19 @@ export default function LoginPage() {
               <span className="text-xs text-slate-400 font-medium">
                 {rememberMe ? 'Sesi tersimpan 7 hari' : 'Sesi hanya saat ini'}
               </span>
+            </div>
+          )}
+
+          {/* Lupa Password */}
+          {mode === 'login' && (
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => router.push('/reset-password')}
+                className="text-sm text-blue-600 hover:underline font-bold"
+              >
+                Lupa Password?
+              </button>
             </div>
           )}
 

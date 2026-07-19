@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { resetUserPassword } from '@/app/actions/userActions'
+import { resetUserPassword, sendResetLinkToUser, getUserEmail, updateUserEmail, removeUserProfile } from '@/app/actions/userActions'
 import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save } from 'lucide-react'
 
 type School = { id: string; name: string; address: string | null; level: string | null; cluster_name: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
@@ -59,6 +59,8 @@ export default function SuperadminDashboard() {
   const [editCode, setEditCode] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editSchoolId, setEditSchoolId] = useState('')
+  const [isSavingLicense, setIsSavingLicense] = useState(false)
+  const [editLicenseMsg, setEditLicenseMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Konfirmasi hapus lisensi
   const [deletingLicenseId, setDeletingLicenseId] = useState<string | null>(null)
@@ -67,7 +69,11 @@ export default function SuperadminDashboard() {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
   const [editUserName, setEditUserName] = useState('')
   const [editUserNip, setEditUserNip] = useState('')
+  const [editUserEmail, setEditUserEmail] = useState('')
+  const [editUserOriginalEmail, setEditUserOriginalEmail] = useState<string | null>(null)
+  const [isLoadingEmail, setIsLoadingEmail] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   
   // Hapus pengguna
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
@@ -82,14 +88,23 @@ export default function SuperadminDashboard() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [s, l, u] = await Promise.all([
-      supabase.from('schools').select('*').order('created_at', { ascending: false }),
-      supabase.from('licenses').select('*, schools(name)').order('created_at', { ascending: false }),
-      supabase.from('user_profiles').select('*').order('created_at', { ascending: false }),
-    ])
-    if (s.data) setSchools(s.data)
-    if (l.data) setLicenses(l.data as License[])
-    if (u.data) setUsers(u.data)
+
+    const schoolsRes = await supabase.from('schools').select('*').order('created_at', { ascending: false })
+    const licensesRes = await supabase.from('licenses').select('*, schools(name)').order('created_at', { ascending: false })
+    let usersRes = await supabase.from('user_profiles').select('*').order('name', { ascending: true })
+
+    if (usersRes.error) {
+      console.warn('Gagal memuat user_profiles dengan select(*):', usersRes.error)
+      usersRes = await supabase.from('user_profiles').select('id, nip, name, school_name, role').order('name', { ascending: true })
+    }
+
+    if (schoolsRes.data) setSchools(schoolsRes.data)
+    if (licensesRes.data) setLicenses(licensesRes.data as License[])
+    if (usersRes.data) setUsers(usersRes.data)
+
+    if (usersRes.error) {
+      console.error('Gagal memuat daftar pengguna:', usersRes.error)
+    }
     setLoading(false)
   }, [supabase])
 
@@ -210,27 +225,51 @@ export default function SuperadminDashboard() {
     setEditCode(lic.code)
     setEditDesc(lic.description ?? '')
     setEditSchoolId(lic.school_id ?? '')
+    setEditLicenseMsg(null)
   }
 
   const saveEdit = async () => {
     if (!editingLicense) return
-    if (!editCode.trim()) return showMsg('error', 'Kode Lisensi tidak boleh kosong.')
+    if (!editCode.trim()) return setEditLicenseMsg({ type: 'error', text: 'Kode Lisensi tidak boleh kosong.' })
+    
+    setIsSavingLicense(true)
+    setEditLicenseMsg(null)
+    
     const { error } = await supabase.from('licenses').update({
       code: editCode.trim().toUpperCase(),
       description: editDesc.trim() || null,
       school_id: editSchoolId || null,
     }).eq('id', editingLicense.id)
-    if (error) return showMsg('error', error.message)
+    
+    setIsSavingLicense(false)
+    
+    if (error) {
+      // Jika pelanggaran unik (misal: kode lisensi sudah ada, atau school_id sudah dikaitkan jika ada constraint UNIQUE)
+      if (error.code === '23505') {
+        return setEditLicenseMsg({ type: 'error', text: 'Kode Lisensi (atau sekolah) ini sudah digunakan. Silakan gunakan yang lain.' })
+      }
+      if (error.code === '23503') {
+        return setEditLicenseMsg({ type: 'error', text: 'Kode Lisensi ini tidak dapat diubah karena sedang digunakan oleh satu atau lebih pengguna.' })
+      }
+      return setEditLicenseMsg({ type: 'error', text: error.message })
+    }
+    
     showMsg('success', `Lisensi berhasil diperbarui!`)
     setEditingLicense(null)
     fetchAll()
   }
 
   const deleteLicense = async (id: string) => {
-    const { error } = await supabase.from('licenses').delete().eq('id', id)
-    if (error) return showMsg('error', error.message)
-    showMsg('success', 'Lisensi berhasil dihapus.')
+    // Tutup modal terlebih dahulu agar toast error terlihat jelas oleh user jika terjadi masalah
     setDeletingLicenseId(null)
+    const { error } = await supabase.from('licenses').delete().eq('id', id)
+    if (error) {
+      if (error.code === '23503') {
+        return showMsg('error', 'Lisensi tidak dapat dihapus karena masih digunakan oleh satu atau lebih pengguna.')
+      }
+      return showMsg('error', error.message)
+    }
+    showMsg('success', 'Lisensi berhasil dihapus.')
     fetchAll()
   }
 
@@ -238,11 +277,33 @@ export default function SuperadminDashboard() {
     setEditingUser(u)
     setEditUserName(u.name || '')
     setEditUserNip(u.nip || '')
+    setEditUserEmail('')
+    setEditUserOriginalEmail(null)
+    setResetMsg(null)
+    // Fetch email using server action (service role)
+    setIsLoadingEmail(true)
+    getUserEmail(u.id).then(res => {
+      if (res && res.success) {
+        setEditUserEmail(res.email || '')
+        setEditUserOriginalEmail(res.email || null)
+      }
+    }).catch(() => {
+      setEditUserEmail('')
+      setEditUserOriginalEmail(null)
+    }).finally(() => setIsLoadingEmail(false))
   }
 
   const saveEditUser = async () => {
     if (!editingUser) return
     if (!editUserName.trim() || !editUserNip.trim()) return showMsg('error', 'Nama dan NIP wajib diisi.')
+    // If email changed, attempt to update auth user first
+    if (editUserEmail && editUserEmail !== editUserOriginalEmail) {
+      const res = await updateUserEmail(editingUser.id, editUserEmail.trim())
+      if (!res || !res.success) {
+        return showMsg('error', res?.error || 'Gagal memperbarui email pengguna di Auth.')
+      }
+    }
+
     const { error } = await supabase.from('user_profiles').update({
       name: editUserName.trim(),
       nip: editUserNip.trim() || null
@@ -255,29 +316,48 @@ export default function SuperadminDashboard() {
 
   const handleResetPassword = async () => {
     if (!editingUser) return
-    const confirmReset = window.confirm(`Apakah Anda yakin ingin mereset password akun ${editingUser.name} menjadi "user123456"?`)
+    const confirmReset = window.confirm(`Apakah Anda ingin mengirim tautan reset password ke alamat email pengguna ${editingUser.name}?`)
     if (!confirmReset) return
 
+    setResetMsg(null)
     setIsResettingPassword(true)
     try {
-      const res = await resetUserPassword(editingUser.id)
+      const res = await sendResetLinkToUser(editingUser.id)
       if (res.success) {
-        showMsg('success', `Password ${editingUser.name} berhasil direset menjadi "user123456"`)
+        setResetMsg({ type: 'success', text: 'Tautan reset password berhasil dikirim ke email pengguna.' })
       } else {
-        showMsg('error', res.error || 'Gagal mereset password')
+        let errorMsg = res.error || 'Gagal mengirim tautan reset'
+        let msgType: 'error' | 'success' = 'error'
+        if (errorMsg.includes('For security purposes, you can only request this after')) {
+          const secondsMatch = errorMsg.match(/after (\d+) seconds/)
+          const seconds = secondsMatch ? secondsMatch[1] : 'beberapa'
+          errorMsg = `Untuk alasan keamanan, Anda baru dapat meminta tautan lagi setelah ${seconds} detik.`
+          msgType = 'success'
+        }
+        setResetMsg({ type: msgType, text: errorMsg })
       }
     } catch (e: any) {
-      showMsg('error', e.message || 'Terjadi kesalahan sistem saat mereset password')
+      let errorMsg = e.message || 'Terjadi kesalahan sistem saat mengirim tautan reset'
+      let msgType: 'error' | 'success' = 'error'
+      if (errorMsg.includes('For security purposes, you can only request this after')) {
+        const secondsMatch = errorMsg.match(/after (\d+) seconds/)
+        const seconds = secondsMatch ? secondsMatch[1] : 'beberapa'
+        errorMsg = `Untuk alasan keamanan, Anda baru dapat meminta tautan lagi setelah ${seconds} detik.`
+        msgType = 'success'
+      }
+      setResetMsg({ type: msgType, text: errorMsg })
     } finally {
       setIsResettingPassword(false)
     }
   }
 
-  const deleteUser = async (id: string) => {
-    // Karena id pengguna terkait auth, sebaiknya ditambahkan peringatan bahwa data profil saja yang dihapus.
-    // Atau auth users juga bisa dihapus via admin api, namun sementara kita hapus dari tabel user_profiles
-    const { error } = await supabase.from('user_profiles').delete().eq('id', id)
-    if (error) return showMsg('error', error.message)
+  const deleteUser = async (id: string | null) => {
+    if (!id) return
+    // Hapus via server action yang menggunakan service role (bypass RLS)
+    const res = await removeUserProfile(id)
+    if (!res || !res.success) {
+      return showMsg('error', res?.error || 'Gagal menghapus pengguna.')
+    }
     showMsg('success', 'Pengguna berhasil dihapus.')
     setDeletingUserId(null)
     fetchAll()
@@ -300,7 +380,7 @@ export default function SuperadminDashboard() {
       <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md shadow-rose-500/20">
+            <div className="w-10 h-10 bg-linear-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md shadow-rose-500/20">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -329,9 +409,9 @@ export default function SuperadminDashboard() {
             { label: 'Total Pengguna', value: users.length, active: users.filter(u => u.role === 'guru').length, color: 'from-emerald-600 to-teal-500', icon: '👥' },
           ].map(stat => (
             <div key={stat.label} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-              <div className="absolute right-[-10px] top-[-10px] text-8xl opacity-[0.03] group-hover:scale-110 transition-transform duration-500 pointer-events-none">{stat.icon}</div>
+              <div className="absolute -right-2.5 -top-2.5 text-8xl opacity-[0.03] group-hover:scale-110 transition-transform duration-500 pointer-events-none">{stat.icon}</div>
               <div>
-                <div className={`text-4xl font-black bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</div>
+                <div className={`text-4xl font-black bg-linear-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</div>
                 <div className="text-slate-600 font-extrabold text-sm uppercase tracking-wide mt-2">{stat.label}</div>
               </div>
               <div className="text-slate-500 text-xs mt-3 font-medium flex items-center gap-1.5">
@@ -557,10 +637,16 @@ export default function SuperadminDashboard() {
                     {schools.filter(s => s.is_active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
+                {editLicenseMsg && (
+                  <div className={`px-4 py-3 rounded-xl text-sm font-bold border ${editLicenseMsg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                    {editLicenseMsg.text}
+                  </div>
+                )}
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setEditingLicense(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                  <button onClick={saveEdit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> Simpan
+                  <button onClick={() => setEditingLicense(null)} disabled={isSavingLicense} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-all">Batal</button>
+                  <button onClick={saveEdit} disabled={isSavingLicense} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition-all disabled:opacity-75 flex items-center justify-center gap-2">
+                    {isSavingLicense ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isSavingLicense ? 'Menyimpan...' : 'Simpan'}
                   </button>
                 </div>
               </div>
@@ -710,10 +796,19 @@ export default function SuperadminDashboard() {
                   <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">NIP / No HP *</label>
                   <input value={editUserNip} onChange={e => setEditUserNip(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all" />
                 </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2 block">Email</label>
+                  <input value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} placeholder={isLoadingEmail ? 'Memuat email...' : 'Alamat email terdaftar'} disabled={isLoadingEmail} className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white" />
+                </div>
                 <div className="pt-2">
+                  {resetMsg && (
+                    <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-bold border ${resetMsg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                      {resetMsg.text}
+                    </div>
+                  )}
                   <button onClick={handleResetPassword} disabled={isResettingPassword} className="w-full py-3 mb-3 border-2 border-amber-200 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
                     <Key className="w-4 h-4" /> 
-                    {isResettingPassword ? 'Mereset Password...' : 'Reset Password ke "user123456"'}
+                    {isResettingPassword ? 'Mengirim Tautan...' : 'Kirim Tautan Reset Password'}
                   </button>
                   <div className="flex gap-3">
                     <button onClick={() => setEditingUser(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>

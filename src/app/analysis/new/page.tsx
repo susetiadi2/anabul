@@ -33,7 +33,7 @@ function AnalysisContent() {
     jenisAsesmen: 'Asesmen Formatif (UH)', 
     guru: '', nip: '', sekolah: '',
     kepalaSekolah: '', nipKepalaSekolah: '',
-    tahunPelajaran: '2025/2026', tanggalPelaksanaan: today, materiPokok: ''
+    tahunPelajaran: '2025/2026', tanggalPelaksanaan: today, tempatPelaksanaan: '', materiPokok: ''
   })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -88,6 +88,12 @@ function AnalysisContent() {
 
         if (dbSession && dbSession.data_payload) {
           dataToLoad = dbSession.data_payload;
+          // Jika payload dari Supabase adalah versi "hybrid" (hanya metadata),
+          // coba ambil data lengkap dari IndexedDB yang menyimpan payload penuh.
+          if (!dataToLoad.analyzedData || !dataToLoad.studentData) {
+            const fromIdb = await idbGet(`analysis_${viewId}`);
+            if (fromIdb) dataToLoad = fromIdb;
+          }
         } else {
           // Fallback ke IndexedDB jika tidak ditemukan di Supabase (untuk kompatibilitas)
           dataToLoad = await idbGet(`analysis_${viewId}`);
@@ -114,6 +120,15 @@ function AnalysisContent() {
     }
     loadData();
   }, [viewId, supabase])
+
+  // Jika tidak dalam mode viewer (tidak ada viewId), pastikan halaman dalam kondisi "Buat Analisis Baru"
+  useEffect(() => {
+    if (!viewId) {
+      setAnalysisResult(null)
+      setActiveTab('ringkasan')
+      setError('')
+    }
+  }, [viewId])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -176,6 +191,25 @@ function AnalysisContent() {
       }
     }
     reader.readAsArrayBuffer(file)
+  }
+
+  const handleResetAnalysis = () => {
+    // If we are viewing a saved report (view mode), navigate to new-analysis route without viewId
+    if (isViewMode) {
+      router.push('/analysis/new')
+      return
+    }
+
+    // Otherwise clear the transient state to show the new-analysis form
+    setAnalysisResult(null)
+    setFile(null)
+    setError('')
+    setActiveTab('ringkasan')
+    try {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch (e) {
+      // ignore
+    }
   }
 
   const downloadTemplate = () => {
@@ -250,27 +284,39 @@ function AnalysisContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Anda harus login terlebih dahulu")
 
-      // 1. Ekstrak hanya metrik dan kesimpulan untuk Supabase (Sangat Ringan)
-      const hybridPayload = {
-        summary: analysisResult.summary,
+      const { data: profileData } = await supabase.from('user_profiles').select('id').eq('id', user.id).single()
+      if (!profileData) {
+        const { error: profileInsertError } = await supabase.from('user_profiles').insert({
+          id: user.id,
+          name: identity.guru || 'Pengguna',
+          school_name: identity.sekolah || 'Tidak Diketahui',
+          role: 'guru'
+        })
+        if (profileInsertError) throw profileInsertError
+      }
+
+      // 1. Simpan payload penuh ke Supabase agar laporan lengkap dapat dilihat dari perangkat lain
+      // Note: sebelumnya hanya metadata yang disimpan (hybridPayload). Menyimpan payload penuh
+      // membuat fitur "View/Show" bekerja dari mesin lain tanpa bergantung pada IndexedDB lokal.
+      const payloadToSave = {
+        ...analysisResult,
         metadata: {
           totalSiswa: analysisResult.studentData?.length || 0,
           totalSoal: analysisResult.analyzedData?.length || 0,
-          soalValid: analysisResult.analyzedData?.filter((d: any) => d.valStatus === 'Valid').length || 0,
-          soalSukar: analysisResult.analyzedData?.filter((d: any) => d.pCat === 'Sukar').length || 0,
-          soalRevisi: analysisResult.analyzedData?.filter((d: any) => ['Revisi', 'Dibuang', 'Gugur'].includes(d.decision)).length || 0
+          soalValid: (analysisResult.analyzedData || []).filter((d: any) => d.valStatus === 'Valid').length || 0,
+          soalSukar: (analysisResult.analyzedData || []).filter((d: any) => d.pCat === 'Sukar').length || 0,
+          soalRevisi: (analysisResult.analyzedData || []).filter((d: any) => ['Revisi', 'Dibuang', 'Gugur'].includes(d.decision)).length || 0
         }
       }
 
-      // 2. Simpan Metadata ke Supabase (Database Utama)
-      // Gunakan nama sekolah dari input Identitas (yang bisa diubah pengguna)
+      // 2. Simpan payload penuh ke Supabase (database utama)
       const { data: insertedSession, error } = await supabase.from('analysis_sessions').insert({
         user_id: user.id,
         name: file?.name || 'Analisis Baru',
         exam_type: examType,
         kkm: kkm,
         school_name: identity.sekolah || 'Tidak Diketahui',
-        data_payload: hybridPayload // Hanya menyimpan metadata
+        data_payload: payloadToSave
       }).select('id').single()
 
       if (error) throw error
@@ -278,6 +324,23 @@ function AnalysisContent() {
       // 3. Simpan Data Penuh (Ribuan baris) ke IndexedDB (Lokal Laptop Guru)
       if (insertedSession?.id) {
         await idbSet(`analysis_${insertedSession.id}`, analysisResult)
+          try {
+            // Also notify server-side API to ensure payload is saved with service role (owner validation)
+            const { data: { session } } = await supabase.auth.getSession()
+            const accessToken = session?.access_token
+            if (accessToken) {
+              await fetch('/api/save-full-payload', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({ sessionId: insertedSession.id, payload: payloadToSave })
+              })
+            }
+          } catch (err) {
+            console.warn('Server-side save endpoint failed:', err)
+          }
       }
       
       setShowSuccessModal(true)
@@ -419,6 +482,8 @@ function AnalysisContent() {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal Pelaksanaan</label>
                   <input type="date" value={identity.tanggalPelaksanaan} onChange={e => setIdentity({...identity, tanggalPelaksanaan: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-3">Tempat Pelaksanaan</label>
+                  <input type="text" value={identity.tempatPelaksanaan || ''} onChange={e => setIdentity({...identity, tempatPelaksanaan: e.target.value})} placeholder="Contoh: Kecamatan X / Sekolah Y" className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kepala Sekolah (Otomatis)</label>
@@ -488,7 +553,7 @@ function AnalysisContent() {
         ) : (
           <div className="space-y-6">
             {/* Kop Surat (Tampil di Print dan Layar) */}
-            <div className="bg-white border-b-4 border-slate-800 p-6 rounded-t-2xl md:p-8 text-center sm:text-left print:border-b-[6px] print:border-double print:border-black print:rounded-none print:shadow-none print:p-0 print:mb-8 print:block print:text-center print:pb-4">
+            <div className="report-header bg-white border-b-4 border-slate-800 p-6 rounded-t-2xl md:p-8 text-center sm:text-left print:border-b-[6px] print:border-double print:border-black print:rounded-none print:shadow-none print:p-0 print:mb-8 print:block print:text-center print:pb-4">
               <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide print:text-2xl print:mb-1">Laporan Analisis Butir Soal</h2>
               <h3 className="text-lg font-bold text-slate-700 uppercase mb-4 print:text-xl print:text-black print:mb-0">{identity.sekolah}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2 text-sm text-slate-800 border-t border-slate-200 pt-4 print:border-t-0 print:pt-6 print:text-left print:text-black">
@@ -524,7 +589,7 @@ function AnalysisContent() {
             </div>
 
             {/* ── Ringkasan & Statistik: tampil di halaman 1 bersama Kop Surat ── */}
-            <div className={`${activeTab === 'ringkasan' ? 'block' : 'hidden'} print:block print:mt-6`}>
+            <div className={`report-summary ${activeTab === 'ringkasan' ? 'block' : 'hidden'} print:block print:mt-6`}>
               <div className="space-y-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:border-black print:rounded-none print:shadow-none">
                   <h3 className="font-bold mb-4 print:text-black print:border-b print:border-black print:pb-2">Statistik Kelas</h3>
@@ -539,7 +604,7 @@ function AnalysisContent() {
                   <div className="hidden print:flex print:items-center print:gap-8 print:mt-4 print:pt-2 print:border-t print:border-slate-300 print:text-sm">
                     <div>Reliabilitas: <strong>{analysisResult.summary.reliability}</strong></div>
                     <div>Kategori: <strong>{analysisResult.summary.relCat}</strong></div>
-                    <div>Soal Diterima: <strong>{analysisResult.summary.accepted} / {analysisResult.analyzedData.length} butir</strong></div>
+                    <div>Soal Diterima: <strong>{analysisResult.summary.accepted} / {analysisResult.analyzedData?.length ?? '-'} butir</strong></div>
                   </div>
                 </div>
 
@@ -551,12 +616,12 @@ function AnalysisContent() {
             </div>
 
             {/* ── Dashboard Grafik: mulai dari halaman 2 ── */}
-            <div className={`transition-none print:break-before-page ${activeTab === 'dashboard' ? 'block' : 'overflow-hidden h-0 invisible absolute w-full left-0'} print:block! print:visible! print:h-auto! print:overflow-visible! print:static!`}>
+            <div className={`charts-section transition-none print:break-before-page ${activeTab === 'dashboard' ? 'block' : 'overflow-hidden h-0 invisible absolute w-full left-0'} print:block! print:visible! print:h-auto! print:overflow-visible! print:static!`}>
               <ChartsDashboard analysisResult={analysisResult} kkm={Number(kkm)} />
             </div>
 
 
-            <div className={`${activeTab === 'sebaran' ? 'block' : 'hidden'} print:block sebaran-print-section`}>
+            <div className={`report-sebaran ${activeTab === 'sebaran' ? 'block' : 'hidden'} print:block sebaran-print-section`}>
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:p-0">
                 <h3 className="font-bold mb-3 print:text-black print:text-base print:mb-2">Sebaran Jawaban &amp; Nilai Siswa</h3>
                 <div className="overflow-x-auto print:overflow-visible">
@@ -565,12 +630,12 @@ function AnalysisContent() {
                       <tr>
                         <th className="w-12.5 min-w-12.5 px-2 py-4 border-x text-center sticky left-0 z-30 bg-slate-50 border-b border-slate-200 print:static print:left-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:border print:border-black" rowSpan={2}>No</th>
                         <th className="w-62.5 min-w-62.5 px-4 py-4 border-x text-left sticky left-12.5 z-30 bg-slate-50 border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:min-w-0 print:w-35 print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Nama Siswa</th>
-                        <th className="px-4 py-2 border-x border-b border-slate-200 bg-slate-100/50 print:px-1 print:py-1.5 print:bg-slate-100 print:border print:border-black print:font-bold" colSpan={analysisResult.analyzedData.length}>Nomor Soal</th>
+                        <th className="px-4 py-2 border-x border-b border-slate-200 bg-slate-100/50 print:px-1 print:py-1.5 print:bg-slate-100 print:border print:border-black print:font-bold" colSpan={analysisResult.analyzedData?.length ?? 0}>Nomor Soal</th>
                         <th className="w-25 min-w-25 px-4 py-4 border-x border-slate-200 bg-slate-50 sticky right-25 z-30 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] border-b-2 print:static print:right-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Skor</th>
                         <th className="w-25 min-w-25 px-4 py-4 border-x border-slate-200 bg-slate-50 sticky right-0 z-30 border-b-2 print:static print:right-auto print:w-auto print:px-1 print:py-1.5 print:bg-slate-100 print:shadow-none print:border print:border-black" rowSpan={2}>Nilai</th>
                       </tr>
                       <tr>
-                        {analysisResult.analyzedData.map((q: any) => (
+                        {(analysisResult.analyzedData || []).map((q: any) => (
                           <th key={q.id} className="w-11.25 min-w-11.25 max-w-11.25 py-2 border-x border-b border-slate-200 bg-slate-50 font-bold text-[11px] print:w-auto print:min-w-0 print:max-w-none print:px-0.5 print:py-1 print:text-[8px] print:bg-slate-100 print:border print:border-black">{q.id}</th>
                         ))}
                       </tr>
@@ -579,7 +644,7 @@ function AnalysisContent() {
                         <td colSpan={2} className="px-4 py-3 font-bold text-right border-x border-blue-200 text-blue-800 sticky left-0 z-30 bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:px-1 print:py-1 print:text-[8px] print:bg-blue-100 print:shadow-none print:border print:border-black print:text-center">
                           {examType === 'uraian' ? 'Skor Maks :' : (examType === 'campuran' ? 'Kunci/Maks :' : 'Kunci :')}
                         </td>
-                        {analysisResult.analyzedData.map((q: any) => (
+                        {(analysisResult.analyzedData || []).map((q: any) => (
                           <td key={q.id} className="w-11.25 min-w-11.25 max-w-11.25 py-3 border-x border-blue-200 font-bold text-[12px] text-blue-700 bg-blue-50/80 print:w-auto print:min-w-0 print:px-0.5 print:py-1 print:text-[8px] print:bg-blue-50 print:border print:border-black">
                             {examType === 'uraian' ? q.maxScore : (examType === 'campuran' ? (q.keyAns || q.maxScore) : (q.keyAns || '-'))}
                           </td>
@@ -593,7 +658,7 @@ function AnalysisContent() {
                         <tr key={idx} className="border-b hover:bg-slate-50 transition-colors group print:border-black">
                           <td className="w-12.5 min-w-12.5 px-2 py-2.5 border-x text-center text-slate-500 sticky left-0 z-10 bg-white group-hover:bg-slate-50 print:static print:left-auto print:px-0.5 print:py-0.5 print:text-[8px] print:border print:border-black print:bg-white">{idx + 1}</td>
                           <td className="w-62.5 min-w-62.5 px-4 py-2.5 border-x text-left font-medium text-slate-700 sticky left-12.5 z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:left-auto print:min-w-0 print:w-auto print:px-1 print:py-0.5 print:text-[8px] print:shadow-none print:border print:border-black print:bg-white print:truncate print:max-w-32.5">{s.name}</td>
-                          {analysisResult.analyzedData.map((q: any) => {
+                          {(analysisResult.analyzedData || []).map((q: any) => {
                             let ansVal = s.itemScores[`${q.id}_ans`]
                             let isCorrect = false
                             
@@ -632,7 +697,7 @@ function AnalysisContent() {
             </div>
 
             <div className={`${activeTab === 'butir' ? 'block' : 'hidden'} print:block print:break-before-page`}>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:p-0">
+            <div className="report-butir bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:p-0">
               <h3 className="font-bold mb-4 print:text-black">Tabel Analisis Butir Soal</h3>
               <div className="overflow-x-auto relative">
                 <table className="w-full text-sm text-left">
@@ -647,7 +712,7 @@ function AnalysisContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {analysisResult.analyzedData.map((item: any, idx: number) => (
+                    {(analysisResult.analyzedData || []).map((item: any, idx: number) => (
                       <tr key={idx} className="border-b hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-slate-900">{item.id}</td>
                         <td className="px-4 py-3">
@@ -706,11 +771,11 @@ function AnalysisContent() {
               const pengayaan = (analysisResult.studentData || []).filter((s: any) => s.status === 'Tuntas')
               
               // Soal yang perlu re-teaching: P < 0.3 (Sukar) ATAU validitas rendah DAN keputusan bukan "Dipakai"
-              const soalReteaching = analysisResult.analyzedData.filter((item: any) =>
+              const soalReteaching = (analysisResult.analyzedData || []).filter((item: any) =>
                 item.pCat === 'Sukar' || (item.valStatus !== 'Valid' && item.decision !== 'Dipakai')
               )
               // Soal pengecoh bermasalah: ada pengecoh yang tidak efektif (pilihan ganda)
-              const soalPengecohBuruk = analysisResult.analyzedData.filter((item: any) => {
+              const soalPengecohBuruk = (analysisResult.analyzedData || []).filter((item: any) => {
                 if (!item.distractorData) return false
                 return Object.values(item.distractorData).some((d: any) => !d.isKey && !d.isEffective && d.count === 0)
               })
@@ -915,7 +980,7 @@ function AnalysisContent() {
                 <p>NIP. {identity.nipKepalaSekolah || '...........................................'}</p>
               </div>
               <div className="text-center w-64">
-                <p>..................................., 20....</p>
+                <p className="font-semibold">{(identity.tempatPelaksanaan && identity.tanggalPelaksanaan) ? `${identity.tempatPelaksanaan}, ${new Date(identity.tanggalPelaksanaan).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}` : '..................................., 20....'}</p>
                 <p className="font-bold">Guru Mata Pelajaran</p>
                 <div className="h-24"></div>
                 <p className="font-bold underline">{identity.guru || '...........................................'}</p>
@@ -925,7 +990,7 @@ function AnalysisContent() {
 
             </div>
 
-            <button onClick={() => setAnalysisResult(null)} className="text-blue-600 font-semibold text-sm hover:underline print:hidden">
+            <button onClick={handleResetAnalysis} className="text-blue-600 font-semibold text-sm hover:underline print:hidden">
               Ulangi Analisis
             </button>
           </div>
@@ -1174,17 +1239,50 @@ function AnalysisContent() {
       {/* Global Print Styles */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 1.5cm;
+          @page { size: A4 portrait; margin: 1cm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; color: #000 !important; }
+
+          /* Make report header compact */
+          .report-header { padding: 8px 6px !important; }
+          .report-header h2 { font-size: 16pt !important; margin-bottom: 4px !important; }
+          .report-header h3 { font-size: 11pt !important; margin-bottom: 6px !important; }
+
+          /* Reduce paddings and spacings for main blocks */
+          .report-summary .bg-white, .report-butir, .report-sebaran .bg-white, .report-siswa, .charts-section { padding: 6px !important; }
+          .report-summary .p-4, .report-summary .p-6 { padding: 6px !important; }
+          .space-y-6 > * { margin-bottom: 6px !important; }
+
+           /* Allow charts to flow into available space (don't force a new page),
+             but avoid breaking inside long tables/sections. */
+           .charts-section { page-break-before: auto; break-before: auto; }
+           .report-header { page-break-after: avoid; }
+           .report-summary { min-height: 0 !important; }
+           .report-sebaran, .report-butir, .report-siswa { page-break-inside: avoid; }
+
+          /* Tables: keep headers and avoid rows splitting awkwardly */
+          table { page-break-inside: auto; border-collapse: collapse; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+
+          /* Compact chart heights for print */
+          .chart-wrapper { height: 130px !important; min-height: 130px !important; }
+          .chart-wrapper svg, .chart-wrapper canvas { height: 130px !important; }
+          .chart-wrapper, .chart-wrapper svg, .chart-wrapper svg * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          body {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            background-color: white !important;
-          }
-          /* Fix tab content overlapping or page break issues */
-          .max-w-4xl { max-w: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .chart-card { padding: 10px !important; }
+
+          .report-sebaran, .report-butir, .report-siswa { page-break-inside: auto !important; }
+
+          /* Make footer/signature area compact */
+          .print\:flex { gap: 10px !important; }
+          .print\:text-sm { font-size: 10px !important; }
+
+          /* Fix container width for print */
+          .max-w-4xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
         }
       `}} />
     </div>

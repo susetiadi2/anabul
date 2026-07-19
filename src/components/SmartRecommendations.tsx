@@ -93,10 +93,10 @@ export default function SmartRecommendations({ sessions }: { sessions: any[] }) 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 mb-10 relative overflow-hidden">
       {/* Ornamen Latar AI */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-indigo-50 to-transparent rounded-bl-full pointer-events-none opacity-50"></div>
+      <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-indigo-50 to-transparent rounded-bl-full pointer-events-none opacity-50"></div>
       
       <div className="mb-6 flex items-center gap-4 relative z-10">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+        <div className="w-12 h-12 bg-linear-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
           <Sparkles className="w-6 h-6" />
         </div>
         <div>

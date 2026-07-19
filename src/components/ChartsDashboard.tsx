@@ -31,8 +31,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 // Card wrapper bersih
-const ChartCard = ({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) => (
-  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+const ChartCard = ({ title, subtitle, children, className }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) => (
+  <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm p-5 ${className || ''}`}>
     <div className="mb-4">
       <h4 className="font-bold text-slate-800 text-sm">{title}</h4>
       {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
@@ -42,10 +42,10 @@ const ChartCard = ({ title, subtitle, children }: { title: string; subtitle?: st
 )
 
 export default function ChartsDashboard({ analysisResult, kkm }: Props) {
-  const { analyzedData, studentData, summary, classStats } = analysisResult
+  const { analyzedData = [], studentData = [], summary = {}, classStats = {} } = analysisResult || {}
 
   // ── 1. Data Ketuntasan ──────────────────────────────────────────
-  const tuntas = summary.tuntas
+  const tuntas = summary.tuntas || 0
   const total = studentData?.length || 0
   const belumTuntas = total - tuntas
   const ketuntasanData = [
@@ -121,8 +121,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
     <div className="space-y-4">
       {/* ─── Row 1: Ketuntasan + Kualitas Soal ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Ketuntasan Belajar" subtitle={`KKTP ${kkm} — Total ${total} siswa`}>
-          <div className="flex items-center justify-center w-full" style={{height: 220}}>
+        <ChartCard className="chart-card" title="Ketuntasan Belajar" subtitle={`KKTP ${kkm} — Total ${total} siswa`}>
+          <div className="chart-wrapper flex items-center justify-center w-full" style={{height: 220}}>
             <PieChart width={320} height={220}>
               <Pie
                 data={ketuntasanData}
@@ -145,7 +145,7 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
           </div>
         </ChartCard>
 
-        <ChartCard title="Kualitas Soal" subtitle="Rekapitulasi keputusan per butir">
+        <ChartCard className="chart-card" title="Kualitas Soal" subtitle="Rekapitulasi keputusan per butir">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={kualitasSoal} barSize={40}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -163,8 +163,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
       </div>
 
       {/* ─── Row 2: Distribusi Nilai ─── */}
-      <ChartCard title="Distribusi Nilai Siswa" subtitle="Persebaran nilai akhir ke dalam kelompok rentang">
-        <ResponsiveContainer width="100%" height={220}>
+      <ChartCard className="chart-card" title="Distribusi Nilai Siswa" subtitle="Persebaran nilai akhir ke dalam kelompok rentang">
+        <ResponsiveContainer className="chart-wrapper" width="100%" height={220}>
           <BarChart data={distribusiNilai} barSize={36}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="label" tick={{ fontSize: 12 }} />
@@ -181,8 +181,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
 
       {/* ─── Row 3: Tingkat Kesukaran + Daya Beda ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Tingkat Kesukaran (P)" subtitle="0 = sangat sukar · 1 = sangat mudah">
-          <ResponsiveContainer width="100%" height={220}>
+        <ChartCard className="chart-card" title="Tingkat Kesukaran (P)" subtitle="0 = sangat sukar · 1 = sangat mudah">
+          <ResponsiveContainer className="chart-wrapper" width="100%" height={220}>
             <AreaChart data={kesukaranData} margin={{ left: -10 }}>
               <defs>
                 <linearGradient id="gradP" x1="0" y1="0" x2="0" y2="1">
@@ -203,8 +203,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
           </div>
         </ChartCard>
 
-        <ChartCard title="Daya Beda (D)" subtitle="Semakin tinggi semakin baik (min ≥ 0.20)">
-          <ResponsiveContainer width="100%" height={220}>
+        <ChartCard className="chart-card" title="Daya Beda (D)" subtitle="Semakin tinggi semakin baik (min ≥ 0.20)">
+          <ResponsiveContainer className="chart-wrapper" width="100%" height={220}>
             <AreaChart data={dayaBedaData} margin={{ left: -10 }}>
               <defs>
                 <linearGradient id="gradD" x1="0" y1="0" x2="0" y2="1">
@@ -226,8 +226,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
       </div>
 
       {/* ─── Row 4: Validitas per Butir ─── */}
-      <ChartCard title="Validitas Butir Soal" subtitle="Batang hijau = Valid · Batang merah = Tidak Valid">
-        <ResponsiveContainer width="100%" height={220}>
+      <ChartCard className="chart-card" title="Validitas Butir Soal" subtitle="Batang hijau = Valid · Batang merah = Tidak Valid">
+        <ResponsiveContainer className="chart-wrapper" width="100%" height={220}>
           <BarChart data={validitasData} margin={{ left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="soal" tick={{ fontSize: 10 }} interval={Math.floor(validitasData.length / 10)} />
@@ -244,8 +244,8 @@ export default function ChartsDashboard({ analysisResult, kkm }: Props) {
 
       {/* ─── Row 5: Efektivitas Distraktor ─── */}
       {distractorKeys.length > 0 && (
-        <ChartCard title="Efektivitas Distraktor per Butir" subtitle="Distribusi persentase siswa yang memilih tiap opsi jawaban">
-          <ResponsiveContainer width="100%" height={260}>
+        <ChartCard className="chart-card" title="Efektivitas Distraktor per Butir" subtitle="Distribusi persentase siswa yang memilih tiap opsi jawaban">
+          <ResponsiveContainer className="chart-wrapper" width="100%" height={260}>
             <BarChart data={distractorData} margin={{ left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="soal" tick={{ fontSize: 10 }} interval={Math.floor(distractorData.length / 10)} />

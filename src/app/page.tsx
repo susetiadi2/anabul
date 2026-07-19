@@ -134,7 +134,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Card 3: Ketuntasan */}
-          <div className="bg-gradient-to-br from-emerald-500/90 to-teal-600/90 backdrop-blur-xl border border-emerald-400/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(16,185,129,0.25)] relative overflow-hidden group text-white">
+          <div className="bg-linear-to-br from-emerald-500/90 to-teal-600/90 backdrop-blur-xl border border-emerald-400/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(16,185,129,0.25)] relative overflow-hidden group text-white">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/20 blur-2xl rounded-full group-hover:scale-150 transition-transform duration-700"></div>
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
             <div className="relative z-10">
