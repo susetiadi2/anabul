@@ -107,12 +107,7 @@ export default function LoginPage() {
     if (!email || !password) { setError('Email dan Password wajib diisi.'); return }
     setLoading(true); setError(null)
     try {
-      // Buat klien supabase khusus dengan cookie maxAge jika rememberMe aktif (7 hari), atau undefined (session)
-      const supabaseLogin = createClient(
-        rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : undefined
-      )
-
-      const { data, error } = await supabaseLogin.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
@@ -448,33 +443,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Ingat Saya — hanya tampil di mode login */}
-          {mode === 'login' && (
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2.5 cursor-pointer group select-none">
-                <div
-                  onClick={() => setRememberMe(!rememberMe)}
-                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                    rememberMe
-                      ? 'bg-blue-600 border-blue-600'
-                      : 'bg-white border-slate-300 group-hover:border-blue-400'
-                  }`}
-                >
-                  {rememberMe && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span className="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
-                  Ingat Saya
-                </span>
-              </label>
-              <span className="text-xs text-slate-400 font-medium">
-                {rememberMe ? 'Sesi tersimpan 7 hari' : 'Sesi hanya saat ini'}
-              </span>
-            </div>
-          )}
 
           {/* Lupa Password */}
           {mode === 'login' && (
