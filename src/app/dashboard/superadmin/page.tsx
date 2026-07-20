@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { resetUserPassword, sendResetLinkToUser, getUserEmail, updateUserEmail, removeUserProfile } from '@/app/actions/userActions'
-import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save } from 'lucide-react'
+import { Building2, Key, Users, Plus, Trash2, RefreshCw, LogOut, CheckCircle, XCircle, ShieldCheck, Pencil, X, Save, Loader2 } from 'lucide-react'
 
 type School = { id: string; name: string; address: string | null; level: string | null; cluster_name: string | null; is_active: boolean; headmaster_name?: string | null; headmaster_nip?: string | null; created_at: string }
 type License = { id: string; code: string; description: string | null; is_active: boolean; school_id: string | null; created_at: string; schools?: { name: string } | null }
@@ -77,6 +77,8 @@ export default function SuperadminDashboard() {
   
   // Hapus pengguna
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [isDeletingUser, setIsDeletingUser] = useState(false)
+  const [deleteUserError, setDeleteUserError] = useState<string | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -353,14 +355,32 @@ export default function SuperadminDashboard() {
 
   const deleteUser = async (id: string | null) => {
     if (!id) return
-    // Hapus via server action yang menggunakan service role (bypass RLS)
-    const res = await removeUserProfile(id)
-    if (!res || !res.success) {
-      return showMsg('error', res?.error || 'Gagal menghapus pengguna.')
+    
+    setIsDeletingUser(true)
+    setDeleteUserError(null)
+    
+    try {
+      // Hapus via server action yang menggunakan service role (bypass RLS)
+      const res = await removeUserProfile(id)
+      
+      if (!res || !res.success) {
+        const errorMsg = res?.error || 'Gagal menghapus pengguna.'
+        setDeleteUserError(errorMsg)
+        console.error('Delete user error:', errorMsg)
+        return
+      }
+      
+      showMsg('success', 'Pengguna berhasil dihapus.')
+      setDeletingUserId(null)
+      setDeleteUserError(null)
+      await fetchAll()
+    } catch (error: any) {
+      const errorMsg = error.message || 'Terjadi kesalahan saat menghapus pengguna.'
+      setDeleteUserError(errorMsg)
+      console.error('Delete user error:', error)
+    } finally {
+      setIsDeletingUser(false)
     }
-    showMsg('success', 'Pengguna berhasil dihapus.')
-    setDeletingUserId(null)
-    fetchAll()
   }
 
   const handleLogout = async () => {
@@ -830,10 +850,44 @@ export default function SuperadminDashboard() {
                 <Trash2 className="w-8 h-8 text-red-500" />
               </div>
               <h3 className="font-black text-xl text-slate-800 mb-2">Hapus Pengguna?</h3>
-              <p className="text-slate-500 text-sm mb-8">Tindakan ini <span className="font-bold text-red-500">tidak dapat dibatalkan</span>. Pengguna ini akan kehilangan profil dan akses terkait.</p>
+              <p className="text-slate-500 text-sm mb-6">Tindakan ini <span className="font-bold text-red-500">tidak dapat dibatalkan</span>. Pengguna ini akan kehilangan profil dan akses terkait.</p>
+              
+              {/* Error message */}
+              {deleteUserError && (
+                <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 text-left">
+                  <strong className="block mb-1">⚠️ Gagal Menghapus:</strong>
+                  <span>{deleteUserError}</span>
+                </div>
+              )}
+              
               <div className="flex gap-3">
-                <button onClick={() => setDeletingUserId(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                <button onClick={() => deleteUser(deletingUserId)} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-500/20 transition-all">Ya, Hapus!</button>
+                <button 
+                  onClick={() => {
+                    setDeletingUserId(null)
+                    setDeleteUserError(null)
+                  }} 
+                  disabled={isDeletingUser}
+                  className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={() => deleteUser(deletingUserId)} 
+                  disabled={isDeletingUser}
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isDeletingUser ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Ya, Hapus!
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
